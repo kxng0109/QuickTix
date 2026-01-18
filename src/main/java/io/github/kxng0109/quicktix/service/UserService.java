@@ -20,12 +20,23 @@ public class UserService {
 
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
-        boolean isANewUser = userRepository.existsByEmail(request.email());
-        if (isANewUser) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new UserExistsException();
         }
 
-        return constructAndSaveUser(request, isANewUser);
+        String phoneNumber = request.phoneNumber() != null ? request.phoneNumber() : null;
+
+        User user = User.builder()
+                        .firstName(request.firstName())
+                        .lastName(request.lastName())
+                        .email(request.email())
+                        .phoneNumber(phoneNumber)
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+
+        User savedUser = userRepository.save(user);
+        return buildUserResponse(savedUser);
     }
 
     @Transactional(readOnly = true)
@@ -35,14 +46,7 @@ public class UserService {
                                           () -> new EntityNotFoundException("User not found with id: " + id)
                                   );
 
-        return UserResponse
-                .builder()
-                .id(user.getId())
-                .firstName(user.getFirstName())
-                .lastName(user.getFirstName())
-                .email(user.getEmail())
-                .phoneNumber(user.getPhoneNumber())
-                .build();
+        return buildUserResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -52,25 +56,28 @@ public class UserService {
                                           () -> new EntityNotFoundException("User not found with email: " + email)
                                   );
 
-        return UserResponse
-                .builder()
-                .id(user.getId())
-                .firstName(user.getFirstName())
-                .lastName(user.getFirstName())
-                .email(user.getEmail())
-                .phoneNumber(user.getPhoneNumber())
-                .build();
+        return buildUserResponse(user);
     }
 
     @Transactional
-    public UserResponse updateUser(CreateUserRequest request) {
-        boolean isANewUser = userRepository.existsByEmail(request.email());
+    public UserResponse updateUserById(Long userId, CreateUserRequest request) {
+        User user = getUserEntityById(userId);
 
-        if (!isANewUser) {
-            throw new EntityNotFoundException("User not found with email: " + request.email());
-        }
+        String phoneNumber = request.phoneNumber() != null ? request.phoneNumber() : null;
 
-        return constructAndSaveUser(request, isANewUser);
+        user = User.builder()
+                   .id(user.getId())
+                   .firstName(request.firstName())
+                   .lastName(request.lastName())
+                   .email(request.email())
+                   .phoneNumber(phoneNumber)
+                   .createdAt(LocalDateTime.now())
+                   .updatedAt(LocalDateTime.now())
+                   .build();
+
+        User savedUser = userRepository.save(user);
+
+        return buildUserResponse(savedUser);
     }
 
     @Transactional
@@ -84,31 +91,21 @@ public class UserService {
     }
 
 
-    private UserResponse constructAndSaveUser(CreateUserRequest request, boolean isANewUser) {
-        String phoneNumber = request.phoneNumber() != null ? request.phoneNumber() : null;
+    @Transactional(readOnly = true)
+    User getUserEntityById(long userId) {
+        return userRepository.findById(userId)
+                             .orElseThrow(
+                                     () -> new EntityNotFoundException("User not found with id: " + userId)
+                             );
+    }
 
-        User user = User.builder()
-                        .firstName(request.firstName())
-                        .lastName(request.lastName())
-                        .email(request.email())
-                        .phoneNumber(phoneNumber)
-                        .updatedAt(LocalDateTime.now())
-                        .build();
-
-        //If we are just creating a user, then get the createdAt to be the updatedAt
-        //We are doing this because we don't need to set the createdAt for existing accounts
-        if (!isANewUser) {
-            user.setCreatedAt(user.getUpdatedAt());
-        }
-
-        User savedUser = userRepository.save(user);
-
+    private UserResponse buildUserResponse(User user) {
         return UserResponse.builder()
-                           .id(savedUser.getId())
-                           .firstName(savedUser.getFirstName())
-                           .lastName(savedUser.getLastName())
-                           .email(savedUser.getEmail())
-                           .phoneNumber(savedUser.getPhoneNumber())
+                           .id(user.getId())
+                           .firstName(user.getFirstName())
+                           .lastName(user.getLastName())
+                           .email(user.getEmail())
+                           .phoneNumber(user.getPhoneNumber())
                            .build();
     }
 }

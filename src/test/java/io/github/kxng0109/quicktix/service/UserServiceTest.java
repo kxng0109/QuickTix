@@ -137,32 +137,33 @@ public class UserServiceTest {
     }
 
     @Test
-    public void updateUser_should_returnUserResponseWIthUpdatedUserDetails_whenRequestIsValidAndUserExists() {
-        when(userRepository.existsByEmail(userEmail))
-                .thenReturn(true);
+    public void updateUserById_should_returnUserResponseWIthUpdatedUserDetails_whenRequestIsValidAndUserByIdExists() {
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class)))
                 .thenAnswer(i -> i.getArgument(0));
 
-        UserResponse response = userService.updateUser(request);
+        UserResponse response = userService.updateUserById(userId, request);
 
         assertNotNull(response);
         assertEquals(userEmail, response.email());
+        assertEquals(userId, response.id());
 
-        verify(userRepository).existsByEmail(userEmail);
+        verify(userRepository).findById(userId);
         verify(userRepository).save(any(User.class));
     }
 
     @Test
-    public void updateUser_should_throwEntityNotFoundException_whenUserDoesNotExist() {
-        when(userRepository.existsByEmail(userEmail))
-                .thenReturn(false);
+    public void updateUserById_should_throwEntityNotFoundException_whenUserByIdDoesNotExist() {
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.empty());
 
         assertThrows(
                 EntityNotFoundException.class,
-                () -> userService.updateUser(request)
+                () -> userService.updateUserById(userId, request)
         );
 
-        verify(userRepository).existsByEmail(userEmail);
+        verify(userRepository).findById(userId);
     }
 
     @Test

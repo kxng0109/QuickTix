@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -31,8 +31,8 @@ public class UserService {
                         .lastName(request.lastName())
                         .email(request.email())
                         .phoneNumber(phoneNumber)
-                        .createdAt(LocalDateTime.now())
-                        .updatedAt(LocalDateTime.now())
+                        .createdAt(Instant.now())
+                        .updatedAt(Instant.now())
                         .build();
 
         User savedUser = userRepository.save(user);
@@ -71,8 +71,8 @@ public class UserService {
                    .lastName(request.lastName())
                    .email(request.email())
                    .phoneNumber(phoneNumber)
-                   .createdAt(LocalDateTime.now())
-                   .updatedAt(LocalDateTime.now())
+                   .createdAt(Instant.now())
+                   .updatedAt(Instant.now())
                    .build();
 
         User savedUser = userRepository.save(user);

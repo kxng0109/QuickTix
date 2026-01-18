@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -25,8 +25,8 @@ public class VenueService {
                            .address(request.address())
                            .city(request.city())
                            .totalCapacity(request.totalCapacity())
-                           .createdAt(LocalDateTime.now())
-                           .updatedAt(LocalDateTime.now())
+                           .createdAt(Instant.now())
+                           .updatedAt(Instant.now())
                            .build();
 
         Venue createdVenue = venueRepository.save(venue);
@@ -65,7 +65,7 @@ public class VenueService {
                      .address(request.address())
                      .city(request.address())
                      .totalCapacity(request.totalCapacity())
-                     .updatedAt(LocalDateTime.now())
+                     .updatedAt(Instant.now())
                      .build();
 
         Venue updatedVenue = venueRepository.save(venue);

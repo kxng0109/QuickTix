@@ -6,7 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "seats")
@@ -36,7 +36,7 @@ public class Seat {
     private SeatStatus seatStatus = SeatStatus.AVAILABLE;
 
     @Column(name = "held_at")
-    private LocalDateTime heldAt;
+    private Instant heldAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "held_by_user_id")
@@ -51,9 +51,9 @@ public class Seat {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

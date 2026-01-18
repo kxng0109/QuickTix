@@ -12,7 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,13 +47,13 @@ public class VenueServiceTest {
                      .address(request.address())
                      .city(request.city())
                      .totalCapacity(request.totalCapacity())
-                     .createdAt(LocalDateTime.now())
-                     .updatedAt(LocalDateTime.now())
+                     .createdAt(Instant.now())
+                     .updatedAt(Instant.now())
                      .build();
     }
 
     @Test
-    public void createVenue_should_returnVenueResponse_whenRequestIsValid(){
+    public void createVenue_should_returnVenueResponse_whenRequestIsValid() {
         when(venueRepository.save(any(Venue.class)))
                 .thenAnswer(i -> i.getArgument(0));
 
@@ -67,7 +67,7 @@ public class VenueServiceTest {
     }
 
     @Test
-    public void getVenueById_should_returnVenueResponse_whenIdExists(){
+    public void getVenueById_should_returnVenueResponse_whenIdExists() {
         when(venueRepository.findById(venueId))
                 .thenReturn(Optional.of(venue));
 
@@ -80,7 +80,7 @@ public class VenueServiceTest {
     }
 
     @Test
-    public void getVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist(){
+    public void getVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
         when(venueRepository.findById(venueId))
                 .thenReturn(Optional.empty());
 
@@ -94,7 +94,7 @@ public class VenueServiceTest {
     }
 
     @Test
-    public void getAllVenues_should_returnAListOfVenueResponse(){
+    public void getAllVenues_should_returnAListOfVenueResponse() {
         when(venueRepository.findAll())
                 .thenReturn(List.of(venue));
 
@@ -107,7 +107,7 @@ public class VenueServiceTest {
     }
 
     @Test
-    public void getVenuesByCity_should_returnAListOfVenueResponse(){
+    public void getVenuesByCity_should_returnAListOfVenueResponse() {
         when(venueRepository.findByCity(city))
                 .thenReturn(List.of(venue));
 
@@ -120,11 +120,11 @@ public class VenueServiceTest {
     }
 
     @Test
-    public void updateVenueById_should_returnVenueResponse_whenIdExists(){
+    public void updateVenueById_should_returnVenueResponse_whenIdExists() {
         when(venueRepository.findById(venueId))
                 .thenReturn(Optional.of(venue));
         when(venueRepository.save(any(Venue.class)))
-        .thenAnswer(i -> i.getArgument(0));
+                .thenAnswer(i -> i.getArgument(0));
 
         VenueResponse response = venueService.updateVenueById(venueId, request);
 
@@ -136,7 +136,7 @@ public class VenueServiceTest {
     }
 
     @Test
-    public void updateVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist(){
+    public void updateVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
         when(venueRepository.findById(venueId))
                 .thenReturn(Optional.empty());
 
@@ -150,9 +150,9 @@ public class VenueServiceTest {
     }
 
     @Test
-    public void deleteVenueById_should_returnNothing_whenIdExists(){
+    public void deleteVenueById_should_returnNothing_whenIdExists() {
         when(venueRepository.findById(venueId))
-        .thenReturn(Optional.of(venue));
+                .thenReturn(Optional.of(venue));
 
         venueService.deleteVenueById(venueId);
 
@@ -161,9 +161,9 @@ public class VenueServiceTest {
     }
 
     @Test
-    public void deleteVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist(){
+    public void deleteVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
         when(venueRepository.findById(venueId))
-        .thenReturn(Optional.empty());
+                .thenReturn(Optional.empty());
 
         assertThrows(
                 EntityNotFoundException.class,

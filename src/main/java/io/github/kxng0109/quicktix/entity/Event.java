@@ -7,7 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Entity
@@ -34,7 +34,7 @@ public class Event {
     private Venue venue;
 
     @Column(name = "event_date_time", nullable = false)
-    private LocalDateTime eventDateTime;
+    private Instant eventDateTime;
 
     @Column(name = "ticket_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal ticketPrice;
@@ -52,9 +52,9 @@ public class Event {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

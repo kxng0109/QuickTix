@@ -1,0 +1,196 @@
+package io.github.kxng0109.quicktix.service;
+
+import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
+import io.github.kxng0109.quicktix.dto.response.UserResponse;
+import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.exception.UserExistsException;
+import io.github.kxng0109.quicktix.repositories.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+public class UserServiceTest {
+    private final Long userId = 100L;
+    private final String userEmail = "test@user.test.com";
+    @Mock
+    private UserRepository userRepository;
+    @InjectMocks
+    private UserService userService;
+    private CreateUserRequest request;
+    private User user;
+
+    @BeforeEach
+    public void setUp() {
+        request = CreateUserRequest
+                .builder()
+                .firstName("test")
+                .lastName("user")
+                .email(userEmail)
+                .phoneNumber("+23457849")
+                .build();
+
+        user = User.builder()
+                   .id(userId)
+                   .email(userEmail)
+                   .build();
+    }
+
+    @Test
+    public void createUser_should_returnAUserResponse_whenRequestIsValid() {
+        when(userRepository.existsByEmail(userEmail))
+                .thenReturn(false);
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(i -> i.getArgument(0));
+
+        UserResponse response = userService.createUser(request);
+
+        assertNotNull(response);
+        assertEquals(userEmail, response.email());
+
+        verify(userRepository).existsByEmail(userEmail);
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    public void createUser_should_throwUserExistsException_whenEmailAlreadyExists() {
+        when(userRepository.existsByEmail(userEmail))
+                .thenReturn(true);
+
+        UserExistsException ex = assertThrows(
+                UserExistsException.class,
+                () -> userService.createUser(request)
+        );
+
+        assertEquals(new UserExistsException().getMessage(), ex.getMessage());
+
+        verify(userRepository).existsByEmail(userEmail);
+        verify(userRepository, never()).save(any(User.class));
+
+
+    }
+
+    @Test
+    public void getUserById_should_returnUserId_whenIdExists() {
+        when(userRepository.findById(userId))
+                .thenReturn(
+                        Optional.ofNullable(user)
+                );
+
+        UserResponse result = userService.getUserById(userId);
+
+        assertNotNull(result);
+        assertEquals(userId, result.id());
+
+        verify(userRepository).findById(userId);
+    }
+
+    @Test
+    public void getUserById_should_throwEntityNotFoundException_whenIdDoesNotExists() {
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                EntityNotFoundException.class,
+                () -> userService.getUserById(userId)
+        );
+
+        verify(userRepository).findById(userId);
+    }
+
+    @Test
+    public void getUserByEmail_should_returnUserEmail_whenEmailExists() {
+        when(userRepository.findByEmail(userEmail))
+                .thenReturn(
+                        Optional.ofNullable(user)
+                );
+
+        UserResponse result = userService.getUserByEmail(userEmail);
+
+        assertNotNull(result);
+        assertEquals(userEmail, result.email());
+
+        verify(userRepository).findByEmail(userEmail);
+    }
+
+    @Test
+    public void getUserByEmail_should_throwEntityNotFoundException_whenEmailDoesNotExists() {
+        when(userRepository.findByEmail(userEmail))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                EntityNotFoundException.class,
+                () -> userService.getUserByEmail(userEmail)
+        );
+
+        verify(userRepository).findByEmail(userEmail);
+    }
+
+    @Test
+    public void updateUser_should_returnUserResponseWIthUpdatedUserDetails_whenRequestIsValidAndUserExists() {
+        when(userRepository.existsByEmail(userEmail))
+                .thenReturn(true);
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(i -> i.getArgument(0));
+
+        UserResponse response = userService.updateUser(request);
+
+        assertNotNull(response);
+        assertEquals(userEmail, response.email());
+
+        verify(userRepository).existsByEmail(userEmail);
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    public void updateUser_should_throwEntityNotFoundException_whenUserDoesNotExist() {
+        when(userRepository.existsByEmail(userEmail))
+                .thenReturn(false);
+
+        assertThrows(
+                EntityNotFoundException.class,
+                () -> userService.updateUser(request)
+        );
+
+        verify(userRepository).existsByEmail(userEmail);
+    }
+
+    @Test
+    public void deleteUserByEmail_should_returnNothing_whenUserExists() {
+        when(userRepository.findByEmail(userEmail))
+                .thenReturn(Optional.ofNullable(user));
+
+        userService.deleteUserByEmail(userEmail);
+
+        verify(userRepository).findByEmail(userEmail);
+        verify(userRepository).delete(user);
+    }
+
+    @Test
+    public void deleteUserByEmail_should_throwEntityNotFoundException_whenUserDoesNotExist() {
+        when(userRepository.findByEmail(userEmail))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                EntityNotFoundException.class,
+                () -> userService.deleteUserByEmail(userEmail)
+        );
+
+        verify(userRepository).findByEmail(userEmail);
+        verify(userRepository, never()).delete(user);
+    }
+
+
+
+
+}

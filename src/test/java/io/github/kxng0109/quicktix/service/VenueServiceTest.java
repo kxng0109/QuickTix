@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.CreateVenueRequest;
 import io.github.kxng0109.quicktix.dto.response.VenueResponse;
+import io.github.kxng0109.quicktix.entity.Event;
 import io.github.kxng0109.quicktix.entity.Venue;
 import io.github.kxng0109.quicktix.repositories.VenueRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -11,6 +12,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,10 +30,14 @@ public class VenueServiceTest {
 
     private final long venueId = 100L;
     private final String city = "a city sha";
+    private final Pageable pageable = PageRequest.of(0, 10);
+
     @Mock
     private VenueRepository venueRepository;
+
     @InjectMocks
     private VenueService venueService;
+
     private CreateVenueRequest request;
     private Venue venue;
 
@@ -95,28 +104,32 @@ public class VenueServiceTest {
 
     @Test
     public void getAllVenues_should_returnAListOfVenueResponse() {
-        when(venueRepository.findAll())
-                .thenReturn(List.of(venue));
+        Page<Venue> venuePage = new PageImpl<>(List.of(venue));
 
-        List<VenueResponse> response = venueService.getAllVenues();
+        when(venueRepository.findAll(any(Pageable.class)))
+                .thenReturn(venuePage);
+
+        Page<VenueResponse> response = venueService.getAllVenues(pageable);
 
         assertNotNull(response);
-        assertEquals(venue.getName(), response.getFirst().name());
+        assertEquals(venue.getName(), response.getContent().getFirst().name());
 
-        verify(venueRepository).findAll();
+        verify(venueRepository).findAll(any(Pageable.class));
     }
 
     @Test
     public void getVenuesByCity_should_returnAListOfVenueResponse() {
-        when(venueRepository.findByCity(city))
-                .thenReturn(List.of(venue));
+        Page<Venue> venuePage = new PageImpl<>(List.of(venue));
 
-        List<VenueResponse> response = venueService.getVenuesByCity(city);
+        when(venueRepository.findByCity(city, pageable))
+                .thenReturn(venuePage);
+
+        Page<VenueResponse> response = venueService.getVenuesByCity(city, pageable);
 
         assertNotNull(response);
-        assertEquals(venue.getName(), response.getFirst().name());
+        assertEquals(venue.getName(), response.getContent().getFirst().name());
 
-        verify(venueRepository).findByCity(city);
+        verify(venueRepository).findByCity(city, pageable);
     }
 
     @Test
@@ -169,6 +182,27 @@ public class VenueServiceTest {
                 EntityNotFoundException.class,
                 () -> venueService.deleteVenueById(venueId)
         );
+
+        verify(venueRepository).findById(venueId);
+        verify(venueRepository, never()).delete(any(Venue.class));
+    }
+
+    @Test
+    public void deleteVenueById_should_throwIllegalStateException_whenVenueHasEvents() {
+        Venue venueWithEvents = Venue.builder()
+                                     .id(venueId)
+                                     .events(List.of(new Event()))
+                                     .build();
+
+        when(venueRepository.findById(venueId))
+                .thenReturn(Optional.of(venueWithEvents));
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> venueService.deleteVenueById(venueId)
+        );
+
+        assertEquals("Cannot delete venue that has associated events. Delete the events first.", ex.getMessage());
 
         verify(venueRepository).findById(venueId);
         verify(venueRepository, never()).delete(any(Venue.class));

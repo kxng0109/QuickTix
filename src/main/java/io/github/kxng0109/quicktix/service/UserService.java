@@ -31,8 +31,6 @@ public class UserService {
                         .lastName(request.lastName())
                         .email(request.email())
                         .phoneNumber(phoneNumber)
-                        .createdAt(Instant.now())
-                        .updatedAt(Instant.now())
                         .build();
 
         User savedUser = userRepository.save(user);
@@ -63,17 +61,17 @@ public class UserService {
     public UserResponse updateUserById(Long userId, CreateUserRequest request) {
         User user = getUserEntityById(userId);
 
-        String phoneNumber = request.phoneNumber() != null ? request.phoneNumber() : null;
+        user.setFirstName(request.firstName());
+        user.setLastName(request.lastName());
+        if(!user.getEmail().equalsIgnoreCase(request.email())) {
+            if(userRepository.existsByEmail(request.email())) {
+                throw new UserExistsException();
+            }
 
-        user = User.builder()
-                   .id(user.getId())
-                   .firstName(request.firstName())
-                   .lastName(request.lastName())
-                   .email(request.email())
-                   .phoneNumber(phoneNumber)
-                   .createdAt(Instant.now())
-                   .updatedAt(Instant.now())
-                   .build();
+            user.setEmail(request.email());
+        }
+        String phoneNumber = request.phoneNumber() != null ? request.phoneNumber() : null;
+        user.setPhoneNumber(phoneNumber);
 
         User savedUser = userRepository.save(user);
 
@@ -86,6 +84,12 @@ public class UserService {
                                   .orElseThrow(
                                           () -> new EntityNotFoundException("User not found with email: " + email)
                                   );
+
+        // Don't delete users with bookings
+        boolean hasBookings = user.getBookings() != null && !user.getBookings().isEmpty();
+        if (hasBookings) {
+            throw new IllegalStateException("Cannot delete user with existing bookings. Deactivate the account instead.");
+        }
 
         userRepository.delete(user);
     }

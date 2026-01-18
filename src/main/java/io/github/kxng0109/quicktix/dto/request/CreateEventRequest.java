@@ -1,11 +1,13 @@
 package io.github.kxng0109.quicktix.dto.request;
 
 import jakarta.validation.constraints.*;
+import lombok.Builder;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
+@Builder
 public record CreateEventRequest(
         @NotBlank(message = "Event name can't be blank.")
         String name,

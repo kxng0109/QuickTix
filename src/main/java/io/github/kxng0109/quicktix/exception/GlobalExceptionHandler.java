@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.exception;
 
 import io.github.kxng0109.quicktix.dto.exception.ErrorResponse;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,36 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         HttpStatus status = HttpStatus.CONFLICT;
+
+        return buildErrorResponse(ex, request, status);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+            IllegalArgumentException ex,
+            HttpServletRequest request
+    ) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        return buildErrorResponse(ex, request, status);
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEntityNotFoundException(
+            EntityNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        HttpStatus status = HttpStatus.NOT_FOUND;
+
+        return buildErrorResponse(ex, request, status);
+    }
+
+
+    private ResponseEntity<ErrorResponse> buildErrorResponse(
+            Exception ex,
+            HttpServletRequest request,
+            HttpStatus status
+    ) {
         ErrorResponse response = ErrorResponse
                 .builder()
                 .timestamp(OffsetDateTime.now())

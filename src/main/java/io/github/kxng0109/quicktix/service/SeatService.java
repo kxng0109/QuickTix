@@ -157,7 +157,8 @@ public class SeatService {
                     && seat.getHeldByUser().getId().equals(userId);
 
             if (!isHeldByMe) {
-                throw new IllegalStateException("Seat " + seat.getSeatNumber() + " is not currently held by you. Please hold the seat first.");
+                throw new IllegalStateException(
+                        "Seat " + seat.getSeatNumber() + " is not currently held by you. Please hold the seat first.");
             }
         }
 

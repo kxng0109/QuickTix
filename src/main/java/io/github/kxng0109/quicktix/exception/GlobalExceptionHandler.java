@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleObjectOptimisticLockingFailure(
             ObjectOptimisticLockingFailureException ex,
             HttpServletRequest request
-    ){
+    ) {
         HttpStatus status = HttpStatus.CONFLICT;
         return buildErrorResponse(ex, request, status);
     }
@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleResourceInUseException(
             ResourceInUseException ex,
             HttpServletRequest request
-    ){
+    ) {
         HttpStatus status = HttpStatus.CONFLICT;
         return buildErrorResponse(ex, request, status);
     }

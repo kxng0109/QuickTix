@@ -4,6 +4,7 @@ import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
 import io.github.kxng0109.quicktix.dto.response.UserResponse;
 import io.github.kxng0109.quicktix.entity.Booking;
 import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.exception.UserExistsException;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -86,7 +87,7 @@ public class UserServiceTest {
     }
 
     @Test
-    public void getUserById_should_returnUserId_whenIdExists() {
+    public void getUserById_should_returnUserResponse_whenIdExists() {
         when(userRepository.findById(userId))
                 .thenReturn(
                         Optional.ofNullable(user)
@@ -236,7 +237,7 @@ public class UserServiceTest {
     }
 
     @Test
-    public void deleteUserByEmail_should_throwIllegalStateException_whenUserHasBookings() {
+    public void deleteUserByEmail_should_throwResourceInUseException_whenUserHasBookings() {
         User userWithBookings = User.builder()
                                     .id(userId)
                                     .email(userEmail)
@@ -246,8 +247,8 @@ public class UserServiceTest {
         when(userRepository.findByEmail(userEmail))
                 .thenReturn(Optional.of(userWithBookings));
 
-        IllegalStateException ex = assertThrows(
-                IllegalStateException.class,
+        ResourceInUseException ex = assertThrows(
+                ResourceInUseException.class,
                 () -> userService.deleteUserByEmail(userEmail)
         );
 

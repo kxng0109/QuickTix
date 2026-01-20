@@ -10,6 +10,7 @@ import io.github.kxng0109.quicktix.entity.Venue;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.EventStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
+import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
 import io.github.kxng0109.quicktix.repositories.SeatRepository;
 import io.github.kxng0109.quicktix.repositories.VenueRepository;
@@ -321,7 +322,7 @@ public class EventServiceTest {
     }
 
     @Test
-    public void deleteEventById_should_throwIllegalStateException_whenEventHasBookings() {
+    public void deleteEventById_should_throwResourceInUseException_whenEventHasBookings() {
         event.setBookings(List.of(
                 Booking.builder().event(event).status(BookingStatus.CONFIRMED).build()
         ));
@@ -330,7 +331,7 @@ public class EventServiceTest {
                 .thenReturn(Optional.of(event));
 
         assertThrows(
-                IllegalStateException.class,
+                ResourceInUseException.class,
                 () -> eventService.deleteEventById(eventId)
         );
 

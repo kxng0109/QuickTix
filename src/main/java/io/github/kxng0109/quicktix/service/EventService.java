@@ -8,6 +8,7 @@ import io.github.kxng0109.quicktix.entity.Seat;
 import io.github.kxng0109.quicktix.entity.Venue;
 import io.github.kxng0109.quicktix.enums.EventStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
+import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
 import io.github.kxng0109.quicktix.repositories.SeatRepository;
 import io.github.kxng0109.quicktix.repositories.VenueRepository;
@@ -167,7 +168,7 @@ public class EventService {
         //Instead we'll need to cancel and refund people back, but this logic won't handle that
         boolean hasBookings = event.getBookings() != null && !event.getBookings().isEmpty();
         if (hasBookings) {
-            throw new IllegalStateException("Cannot delete event with active bookings. Cancel the event instead.");
+            throw new ResourceInUseException("Cannot delete event with active bookings. Cancel the event instead.");
         }
 
         // Will cascade to Seats automatically

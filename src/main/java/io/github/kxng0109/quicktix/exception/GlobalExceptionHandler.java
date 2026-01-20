@@ -52,6 +52,15 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex, request, status);
     }
 
+    @ExceptionHandler(ResourceInUseException.class)
+    public ResponseEntity<ErrorResponse> handleResourceInUseException(
+            ResourceInUseException ex,
+            HttpServletRequest request
+    ){
+        HttpStatus status = HttpStatus.CONFLICT;
+        return buildErrorResponse(ex, request, status);
+    }
+
 
     private ResponseEntity<ErrorResponse> buildErrorResponse(
             Exception ex,

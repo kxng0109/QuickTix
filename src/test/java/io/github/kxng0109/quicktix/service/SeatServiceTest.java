@@ -372,6 +372,32 @@ public class SeatServiceTest {
     }
 
     @Test
+    public void releaseSeats_should_throwIllegalArgumentException_whenSeatDoesntBelongToEvent() {
+        holdSeatsRequest = HoldSeatsRequest.builder()
+                                           .seatIds(seatIds)
+                                           .eventId(eventId + 1L)
+                                           .userId(userId)
+                                           .build();
+
+        when(userRepository.findById(anyLong()))
+                .thenReturn(Optional.of(user));
+        when(eventRepository.findById(anyLong()))
+                .thenReturn(Optional.of(event));
+        when(seatRepository.findAllById(eq(seatIds)))
+                .thenReturn(seats);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> seatService.releaseSeats(holdSeatsRequest)
+        );
+
+        verify(userRepository).findById(anyLong());
+        verify(eventRepository).findById(anyLong());
+        verify(seatRepository).findAllById(eq(seatIds));
+        verify(seatRepository, never()).saveAll(seats);
+    }
+
+    @Test
     public void releaseExpiredHolds_should_setHeldSeatsToAvailable() {
         Instant cutoff = Instant.now().minus(15, ChronoUnit.MINUTES);
 

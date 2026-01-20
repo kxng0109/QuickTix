@@ -3,6 +3,7 @@ package io.github.kxng0109.quicktix.service;
 import io.github.kxng0109.quicktix.dto.request.CreateVenueRequest;
 import io.github.kxng0109.quicktix.dto.response.VenueResponse;
 import io.github.kxng0109.quicktix.entity.Venue;
+import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.repositories.VenueRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -73,7 +74,8 @@ public class VenueService {
         // Prevent deleting a venue that has events
         boolean hasEvents = venue.getEvents() != null && !venue.getEvents().isEmpty();
         if (hasEvents) {
-            throw new IllegalStateException("Cannot delete venue that has associated events. Delete the events first.");
+            throw new ResourceInUseException(
+                    "Cannot delete venue that has associated events. Delete the events first.");
         }
 
         venueRepository.delete(venue);

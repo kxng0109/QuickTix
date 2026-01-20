@@ -4,6 +4,7 @@ import io.github.kxng0109.quicktix.dto.request.CreateVenueRequest;
 import io.github.kxng0109.quicktix.dto.response.VenueResponse;
 import io.github.kxng0109.quicktix.entity.Event;
 import io.github.kxng0109.quicktix.entity.Venue;
+import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.repositories.VenueRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -188,7 +189,7 @@ public class VenueServiceTest {
     }
 
     @Test
-    public void deleteVenueById_should_throwIllegalStateException_whenVenueHasEvents() {
+    public void deleteVenueById_should_throwResourceInUseException_whenVenueHasEvents() {
         Venue venueWithEvents = Venue.builder()
                                      .id(venueId)
                                      .events(List.of(new Event()))
@@ -197,8 +198,8 @@ public class VenueServiceTest {
         when(venueRepository.findById(venueId))
                 .thenReturn(Optional.of(venueWithEvents));
 
-        IllegalStateException ex = assertThrows(
-                IllegalStateException.class,
+        ResourceInUseException ex = assertThrows(
+                ResourceInUseException.class,
                 () -> venueService.deleteVenueById(venueId)
         );
 

@@ -3,14 +3,13 @@ package io.github.kxng0109.quicktix.service;
 import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
 import io.github.kxng0109.quicktix.dto.response.UserResponse;
 import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.exception.UserExistsException;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -63,8 +62,8 @@ public class UserService {
 
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
-        if(!user.getEmail().equalsIgnoreCase(request.email())) {
-            if(userRepository.existsByEmail(request.email())) {
+        if (!user.getEmail().equalsIgnoreCase(request.email())) {
+            if (userRepository.existsByEmail(request.email())) {
                 throw new UserExistsException();
             }
 
@@ -88,7 +87,8 @@ public class UserService {
         // Don't delete users with bookings
         boolean hasBookings = user.getBookings() != null && !user.getBookings().isEmpty();
         if (hasBookings) {
-            throw new IllegalStateException("Cannot delete user with existing bookings. Deactivate the account instead.");
+            throw new ResourceInUseException(
+                    "Cannot delete user with existing bookings. Deactivate the account instead.");
         }
 
         userRepository.delete(user);

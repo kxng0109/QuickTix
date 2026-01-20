@@ -74,7 +74,7 @@ public class SeatService {
         }
 
         for (Seat seat : seats) {
-            validateSeatBelongsToEvent(request, seat);
+            validateSeatBelongsToEvent(request.eventId(), seat);
 
             if (!seat.getSeatStatus().equals(SeatStatus.AVAILABLE)) {
                 boolean isHeldByCurrentUser = seat.getHeldByUser() != null && seat.getHeldByUser().getId()
@@ -107,7 +107,7 @@ public class SeatService {
 
         List<Seat> seats = seatRepository.findAllById(request.seatIds());
         for (Seat seat : seats) {
-            validateSeatBelongsToEvent(request, seat);
+            validateSeatBelongsToEvent(request.eventId(), seat);
 
             if (seat.getHeldByUser() == null || !seat.getHeldByUser().getId().equals(request.userId())) {
                 throw new IllegalArgumentException("You cannot release a seat you do not hold.");
@@ -139,11 +139,36 @@ public class SeatService {
         seatRepository.saveAll(expiredSeats);
     }
 
+    public List<Seat> validateAndGetHeldSeats(List<Long> seatIds, Long userId, Long eventId) {
+        List<Seat> seats = seatRepository.findAllById(seatIds);
 
-    private void validateSeatBelongsToEvent(HoldSeatsRequest request, Seat seat) {
-        if (!seat.getEvent().getId().equals(request.eventId())) {
+        if (seats.size() != seatIds.size()) {
+            throw new EntityNotFoundException("One or more seats not found");
+        }
+
+        for (Seat seat : seats) {
+            validateSeatBelongsToEvent(eventId, seat);
+
+            //The seat must be held by the user.
+            // The user would have selected the seats they wanted before
+            // So we need to be sure that it
+            boolean isHeldByMe = seat.getSeatStatus() == SeatStatus.HELD
+                    && seat.getHeldByUser() != null
+                    && seat.getHeldByUser().getId().equals(userId);
+
+            if (!isHeldByMe) {
+                throw new IllegalStateException("Seat " + seat.getSeatNumber() + " is not currently held by you. Please hold the seat first.");
+            }
+        }
+
+        return seats;
+    }
+
+
+    private void validateSeatBelongsToEvent(Long eventId, Seat seat) {
+        if (!seat.getEvent().getId().equals(eventId)) {
             throw new IllegalArgumentException(
-                    "Seat " + seat.getId() + " does not belong to Event " + request.eventId()
+                    "Seat " + seat.getId() + " does not belong to Event " + eventId
             );
         }
     }

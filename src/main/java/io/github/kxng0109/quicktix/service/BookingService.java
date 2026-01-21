@@ -2,11 +2,9 @@ package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.InitiateBookingRequest;
 import io.github.kxng0109.quicktix.dto.response.BookingResponse;
-import io.github.kxng0109.quicktix.entity.Booking;
-import io.github.kxng0109.quicktix.entity.Event;
-import io.github.kxng0109.quicktix.entity.Seat;
-import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.entity.*;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
+import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
@@ -93,10 +91,9 @@ public class BookingService {
                                  .user(user)
                                  .event(event)
                                  .seats(seats)
-                                 .status(request.status())
+                                 .status(BookingStatus.PENDING)
                                  .bookingReference(generateUniqueBookingReference())
                                  .totalAmount(request.totalAmount())
-                                 .payment(request.payment())
                                  .build();
 
         Booking savedBooking = bookingRepository.save(booking);
@@ -110,20 +107,23 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse confirmBooking(Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
+    public void confirmBooking(Long bookingId) {
+        Booking booking = bookingRepository.findByIdWithPayment(bookingId)
                                            .orElseThrow(
                                                    () -> new EntityNotFoundException("Booking not found.")
                                            );
 
         //If the booking was already previously confirmed, then don't do it again
         //Just build and return a BookingResponse
-        if (booking.getStatus().equals(BookingStatus.CONFIRMED)) {
-            return buildBookingResponse(booking);
-        }
+        if (booking.getStatus().equals(BookingStatus.CONFIRMED)) return;
 
         if (!booking.getStatus().equals(BookingStatus.PENDING)) {
             throw new EntityNotFoundException("Cannot confirm a booking that is in status: " + booking.getStatus());
+        }
+
+        Payment payment = booking.getPayment();
+        if (payment == null || !payment.getStatus().equals(PaymentStatus.COMPLETED)) {
+            throw new InvalidOperationException("Cannot confirm a booking. Payment is missing or not completed");
         }
 
         booking.setStatus(BookingStatus.CONFIRMED);
@@ -133,8 +133,6 @@ public class BookingService {
 
         seatRepository.saveAll(booking.getSeats());
         bookingRepository.save(booking);
-
-        return buildBookingResponse(booking);
     }
 
     @Transactional

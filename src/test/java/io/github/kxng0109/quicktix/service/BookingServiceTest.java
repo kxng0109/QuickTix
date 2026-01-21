@@ -5,6 +5,7 @@ import io.github.kxng0109.quicktix.dto.response.BookingResponse;
 import io.github.kxng0109.quicktix.entity.*;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.EventStatus;
+import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
@@ -39,6 +40,7 @@ public class BookingServiceTest {
 
     private final Long bookingId = 100L;
     private final Long userId = 200L;
+    private final Long paymentId = 300L;
     private final BigDecimal totalAmount = BigDecimal.valueOf(12334.54);
     private final Pageable pageable = PageRequest.of(0, 2);
     private final String bookingReference = BookingReferenceGenerator.generate();
@@ -123,12 +125,18 @@ public class BookingServiceTest {
         seat1.setBooking(booking);
         user.setBookings(List.of(booking));
         event.setBookings(List.of(booking));
+        booking.setPayment(
+                Payment.builder()
+                       .id(paymentId)
+                       .booking(booking)
+                       .status(PaymentStatus.COMPLETED)
+                       .build()
+        );
 
         bookingRequest = InitiateBookingRequest.builder()
                                                .userId(userId)
                                                .eventId(eventId)
                                                .seats(List.of(seat1Id, seat2Id))
-                                               .status(BookingStatus.PENDING)
                                                .totalAmount(booking.getTotalAmount())
                                                .build();
     }
@@ -392,43 +400,46 @@ public class BookingServiceTest {
     }
 
     @Test
-    public void confirmBooking_should_returnBookingResponse_when_bookingIsPending() {
-        when(bookingRepository.findById(anyLong()))
+    public void confirmBooking_should_returnNothing_when_bookingIsPending() {
+        when(bookingRepository.findByIdWithPayment(anyLong()))
                 .thenReturn(Optional.of(booking));
         when(bookingRepository.save(any(Booking.class)))
                 .thenReturn(booking);
 
-        BookingResponse response = bookingService.confirmBooking(bookingId);
+        bookingService.confirmBooking(bookingId);
 
-        assertNotNull(response);
-        assertEquals(BookingStatus.CONFIRMED.getDisplayName(), response.status());
-        assertEquals(SeatStatus.BOOKED, response.seats().getFirst().getSeatStatus());
+        assertEquals(BookingStatus.CONFIRMED, booking.getStatus());
+        assertEquals(SeatStatus.BOOKED, booking.getSeats().getFirst().getSeatStatus());
+        assertEquals(paymentId, booking.getPayment().getId());
 
-        verify(bookingRepository).findById(anyLong());
+        verify(bookingRepository).findByIdWithPayment(anyLong());
         verify(bookingRepository).save(any(Booking.class));
+        verify(seatRepository).saveAll(anyList());
+
     }
 
     @Test
-    public void confirmBooking_should_returnBookingResponse_when_bookingIsAlreadyConfirmed() {
+    public void confirmBooking_should_returnNothing_when_bookingIsAlreadyConfirmed() {
         booking.setStatus(BookingStatus.CONFIRMED);
 
-        when(bookingRepository.findById(anyLong()))
+        when(bookingRepository.findByIdWithPayment(anyLong()))
                 .thenReturn(Optional.of(booking));
 
-        BookingResponse response = bookingService.confirmBooking(bookingId);
+        bookingService.confirmBooking(bookingId);
 
-        assertNotNull(response);
-        assertEquals(BookingStatus.CONFIRMED.getDisplayName(), response.status());
+        assertEquals(BookingStatus.CONFIRMED, booking.getStatus());
         assertEquals(SeatStatus.HELD,
-                     response.seats().getFirst().getSeatStatus()
+                     booking.getSeats().getFirst().getSeatStatus()
         ); //Intentional to show that it didn't get to the logic under it
 
-        verify(bookingRepository).findById(anyLong());
+        verify(bookingRepository).findByIdWithPayment(anyLong());
+        verify(seatRepository, never()).saveAll(anyList());
+        verify(bookingRepository, never()).save(any(Booking.class));
     }
 
     @Test
     public void confirmBooking_should_throwEntityNotFoundException_when_bookingIsNotFound() {
-        when(bookingRepository.findById(anyLong()))
+        when(bookingRepository.findByIdWithPayment(anyLong()))
                 .thenReturn(Optional.empty());
 
         assertThrows(
@@ -436,7 +447,8 @@ public class BookingServiceTest {
                 () -> bookingService.confirmBooking(bookingId)
         );
 
-        verify(bookingRepository).findById(anyLong());
+        verify(bookingRepository).findByIdWithPayment(anyLong());
+        verify(seatRepository, never()).saveAll(anyList());
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
@@ -444,7 +456,7 @@ public class BookingServiceTest {
     public void confirmBooking_should_throwEntityNotFoundException_when_bookingIsNotPendingOrConfirmed() {
         booking.setStatus(BookingStatus.EXPIRED);
 
-        when(bookingRepository.findById(anyLong()))
+        when(bookingRepository.findByIdWithPayment(anyLong()))
                 .thenReturn(Optional.of(booking));
 
         EntityNotFoundException ex = assertThrows(
@@ -454,7 +466,31 @@ public class BookingServiceTest {
 
         assertEquals("Cannot confirm a booking that is in status: " + booking.getStatus(), ex.getMessage());
 
-        verify(bookingRepository).findById(anyLong());
+        verify(bookingRepository).findByIdWithPayment(anyLong());
+        verify(seatRepository, never()).saveAll(anyList());
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    public void confirmBooking_should_throwInvalidOperationException_when_paymentIsNullOrNotCompleted() {
+        booking.setPayment(null);
+
+        when(bookingRepository.findByIdWithPayment(anyLong()))
+                .thenReturn(Optional.of(booking));
+
+        InvalidOperationException ex = assertThrows(
+                InvalidOperationException.class,
+                () -> bookingService.confirmBooking(bookingId)
+        );
+
+        assertEquals(
+                "Cannot confirm a booking. Payment is missing or not completed",
+                ex.getMessage()
+        );
+        assertEquals(BookingStatus.PENDING, booking.getStatus());
+
+        verify(bookingRepository).findByIdWithPayment(anyLong());
+        verify(seatRepository, never()).saveAll(anyList());
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 

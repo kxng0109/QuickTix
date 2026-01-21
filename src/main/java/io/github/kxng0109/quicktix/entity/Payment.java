@@ -1,5 +1,6 @@
 package io.github.kxng0109.quicktix.entity;
 
+import io.github.kxng0109.quicktix.enums.PaymentMethod;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -33,8 +34,9 @@ public class Payment {
     @Builder.Default
     private PaymentStatus status = PaymentStatus.PENDING;
 
-    @Column(name = "payment_method")
-    private String paymentMethod;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false)
+    private PaymentMethod paymentMethod;
 
     @Column(name = "transaction_reference")
     private String transactionReference;

@@ -39,7 +39,7 @@ public class Booking {
     private BookingStatus status = BookingStatus.PENDING;
 
     @Column(name = "booking_reference", nullable = false, unique = true)
-    private Long bookingReference;
+    private String bookingReference;
 
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;

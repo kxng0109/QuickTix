@@ -33,8 +33,11 @@ public class Event {
     @JoinColumn(name = "venue_id", nullable = false)
     private Venue venue;
 
-    @Column(name = "event_date_time", nullable = false)
-    private Instant eventDateTime;
+    @Column(name = "event_start_date_time", nullable = false)
+    private Instant eventStartDateTime;
+
+    @Column(name = "event_end_date_time", nullable = false)
+    private Instant eventEndDateTime;
 
     @Column(name = "ticket_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal ticketPrice;

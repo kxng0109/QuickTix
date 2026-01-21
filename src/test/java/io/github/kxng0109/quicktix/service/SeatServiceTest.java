@@ -67,7 +67,8 @@ public class SeatServiceTest {
                      .seats(seats)
                      .venue(new Venue())
                      .status(EventStatus.UPCOMING)
-                     .eventDateTime(Instant.now().plus(1, ChronoUnit.HOURS))
+                     .eventStartDateTime(Instant.now().plus(1, ChronoUnit.HOURS))
+                     .eventEndDateTime(Instant.now().plus(2, ChronoUnit.HOURS))
                      .ticketPrice(BigDecimal.valueOf(1395.65))
                      .build();
 

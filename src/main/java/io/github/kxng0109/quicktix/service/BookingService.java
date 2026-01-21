@@ -27,210 +27,211 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BookingService {
 
-    private final BookingRepository bookingRepository;
-    private final UserRepository userRepository;
-    private final EventRepository eventRepository;
-    private final SeatRepository seatRepository;
-    private final SeatService seatService;
+	private final BookingRepository bookingRepository;
+	private final UserRepository userRepository;
+	private final EventRepository eventRepository;
+	private final SeatRepository seatRepository;
+	private final SeatService seatService;
 
-    @Transactional(readOnly = true)
-    public BookingResponse getBookingById(Long bookId, Long userId) {
-        Booking booking = bookingRepository.findById(bookId)
-                                           .orElseThrow(
-                                                   () -> new EntityNotFoundException("Booking not found.")
-                                           );
+	@Transactional(readOnly = true)
+	public BookingResponse getBookingById(Long bookId, Long userId) {
+		Booking booking = bookingRepository.findById(bookId)
+		                                   .orElseThrow(
+				                                   () -> new EntityNotFoundException("Booking not found.")
+		                                   );
 
-        validateUserMadeBooking(userId, booking);
+		validateUserMadeBooking(userId, booking);
 
-        return buildBookingResponse(booking);
-    }
+		return buildBookingResponse(booking);
+	}
 
-    @Transactional(readOnly = true)
-    public BookingResponse getBookingByReference(String bookingReference, Long userId) {
-        Booking booking = bookingRepository.findByBookingReference(bookingReference)
-                                           .orElseThrow(
-                                                   () -> new EntityNotFoundException("Booking not found.")
-                                           );
+	@Transactional(readOnly = true)
+	public BookingResponse getBookingByReference(String bookingReference, Long userId) {
+		Booking booking = bookingRepository.findByBookingReference(bookingReference)
+		                                   .orElseThrow(
+				                                   () -> new EntityNotFoundException("Booking not found.")
+		                                   );
 
-        validateUserMadeBooking(userId, booking);
+		validateUserMadeBooking(userId, booking);
 
-        return buildBookingResponse(booking);
-    }
+		return buildBookingResponse(booking);
+	}
 
-    @Transactional(readOnly = true)
-    public Page<BookingResponse> getBookingsByUser(Long userId, Pageable pageable) {
-        User user = userRepository.findById(userId)
-                                  .orElseThrow(
-                                          () -> new EntityNotFoundException("User not found.")
-                                  );
+	@Transactional(readOnly = true)
+	public Page<BookingResponse> getBookingsByUser(Long userId, Pageable pageable) {
+		User user = userRepository.findById(userId)
+		                          .orElseThrow(
+				                          () -> new EntityNotFoundException("User not found.")
+		                          );
 
-        Page<Booking> bookings = bookingRepository.findByUserId(user.getId(), pageable);
+		Page<Booking> bookings = bookingRepository.findByUserId(user.getId(), pageable);
 
-        return bookings.map(this::buildBookingResponse);
-    }
+		return bookings.map(this::buildBookingResponse);
+	}
 
-    @Transactional
-    public BookingResponse createPendingBooking(InitiateBookingRequest request) {
-        Event event = eventRepository.findById(request.eventId())
-                                     .orElseThrow(
-                                             () -> new EntityNotFoundException("Event not found.")
-                                     );
+	@Transactional
+	public BookingResponse createPendingBooking(InitiateBookingRequest request) {
+		Event event = eventRepository.findById(request.eventId())
+		                             .orElseThrow(
+				                             () -> new EntityNotFoundException("Event not found.")
+		                             );
 
-        User user = userRepository.findById(request.userId())
-                                  .orElseThrow(
-                                          () -> new EntityNotFoundException("User not found.")
-                                  );
+		User user = userRepository.findById(request.userId())
+		                          .orElseThrow(
+				                          () -> new EntityNotFoundException("User not found.")
+		                          );
 
-        List<Seat> seats = seatService.validateAndGetHeldSeats(
-                request.seats(),
-                request.userId(),
-                request.eventId()
-        );
+		List<Seat> seats = seatService.validateAndGetHeldSeats(
+				request.seats(),
+				request.userId(),
+				request.eventId()
+		);
 
-        Booking booking = Booking.builder()
-                                 .user(user)
-                                 .event(event)
-                                 .seats(seats)
-                                 .status(BookingStatus.PENDING)
-                                 .bookingReference(generateUniqueBookingReference())
-                                 .totalAmount(request.totalAmount())
-                                 .build();
+		Booking booking = Booking.builder()
+		                         .user(user)
+		                         .event(event)
+		                         .seats(seats)
+		                         .status(BookingStatus.PENDING)
+		                         .bookingReference(generateUniqueBookingReference())
+		                         .totalAmount(request.totalAmount())
+		                         .build();
 
-        Booking savedBooking = bookingRepository.save(booking);
+		Booking savedBooking = bookingRepository.save(booking);
 
-        for (Seat seat : seats) {
-            seat.setBooking(savedBooking);
-        }
-        seatRepository.saveAll(seats);
+		for (Seat seat : seats) {
+			seat.setBooking(savedBooking);
+		}
+		seatRepository.saveAll(seats);
 
-        return buildBookingResponse(savedBooking);
-    }
+		return buildBookingResponse(savedBooking);
+	}
 
-    @Transactional
-    public void confirmBooking(Long bookingId) {
-        Booking booking = bookingRepository.findByIdWithPayment(bookingId)
-                                           .orElseThrow(
-                                                   () -> new EntityNotFoundException("Booking not found.")
-                                           );
+	@Transactional
+	public void confirmBooking(Long bookingId) {
+		Booking booking = bookingRepository.findByIdWithPayment(bookingId)
+		                                   .orElseThrow(
+				                                   () -> new EntityNotFoundException("Booking not found.")
+		                                   );
 
-        //If the booking was already previously confirmed, then don't do it again
-        //Just build and return a BookingResponse
-        if (booking.getStatus().equals(BookingStatus.CONFIRMED)) return;
+		//If the booking was already previously confirmed, then don't do it again
+		//Just build and return a BookingResponse
+		if (booking.getStatus().equals(BookingStatus.CONFIRMED)) return;
 
-        if (!booking.getStatus().equals(BookingStatus.PENDING)) {
-            throw new EntityNotFoundException("Cannot confirm a booking that is in status: " + booking.getStatus());
-        }
+		if (!booking.getStatus().equals(BookingStatus.PENDING)) {
+			throw new EntityNotFoundException("Cannot confirm a booking that is in status: " + booking.getStatus());
+		}
 
-        Payment payment = booking.getPayment();
-        if (payment == null || !payment.getStatus().equals(PaymentStatus.COMPLETED)) {
-            throw new InvalidOperationException("Cannot confirm a booking. Payment is missing or not completed");
-        }
+		Payment payment = booking.getPayment();
+		if (payment == null || !payment.getStatus().equals(PaymentStatus.COMPLETED)) {
+			throw new InvalidOperationException("Cannot confirm a booking. Payment is missing or not completed");
+		}
 
-        booking.setStatus(BookingStatus.CONFIRMED);
-        for (Seat seat : booking.getSeats()) {
-            seat.setSeatStatus(SeatStatus.BOOKED);
-        }
+		booking.setStatus(BookingStatus.CONFIRMED);
+		for (Seat seat : booking.getSeats()) {
+			seat.setSeatStatus(SeatStatus.BOOKED);
+		}
 
-        seatRepository.saveAll(booking.getSeats());
-        bookingRepository.save(booking);
-    }
+		seatRepository.saveAll(booking.getSeats());
+		bookingRepository.save(booking);
+	}
 
-    @Transactional
-    public void cancelBooking(Long bookingId, Long userId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                                           .orElseThrow(
-                                                   () -> new EntityNotFoundException("Booking not found.")
-                                           );
+	@Transactional
+	public void cancelBooking(Long bookingId, Long userId) {
+		Booking booking = bookingRepository.findById(bookingId)
+		                                   .orElseThrow(
+				                                   () -> new EntityNotFoundException("Booking not found.")
+		                                   );
 
-        validateUserMadeBooking(userId, booking);
+		validateUserMadeBooking(userId, booking);
 
-        if (booking.getStatus().equals(BookingStatus.CONFIRMED)) {
-            //TODO: in the future, I think we'll need to trigger refunds
-            throw new InvalidOperationException(
-                    "Cannot cancel a confirmed booking yet. Please contact support for refunds.");
-        }
+		if (booking.getStatus().equals(BookingStatus.CONFIRMED)) {
+			//TODO: in the future, I think we'll need to trigger refunds
+			throw new InvalidOperationException(
+					"Cannot cancel a confirmed booking yet. Please contact support for refunds.");
+		}
 
-        if (!booking.getStatus().equals(BookingStatus.PENDING)) {
-            throw new InvalidOperationException("Cannot cancel booking. Status is already: " + booking.getStatus());
-        }
+		if (!booking.getStatus().equals(BookingStatus.PENDING)) {
+			throw new InvalidOperationException("Cannot cancel booking. Status is already: " + booking.getStatus());
+		}
 
-        booking.setStatus(BookingStatus.CANCELLED);
+		booking.setStatus(BookingStatus.CANCELLED);
 
-        List<Seat> seatsToRelease = booking.getSeats();
-        for (Seat seat : seatsToRelease) {
-            seat.setSeatStatus(SeatStatus.AVAILABLE);
-            seat.setHeldAt(null);
-            seat.setHeldByUser(null);
-            seat.setBooking(null);
-        }
+		List<Seat> seatsToRelease = booking.getSeats();
+		for (Seat seat : seatsToRelease) {
+			seat.setSeatStatus(SeatStatus.AVAILABLE);
+			seat.setHeldAt(null);
+			seat.setHeldByUser(null);
+			seat.setBooking(null);
+		}
 
-        seatRepository.saveAll(seatsToRelease);
-        bookingRepository.save(booking);
-    }
+		seatRepository.saveAll(seatsToRelease);
+		bookingRepository.save(booking);
+	}
 
-    @Transactional
-    public void expirePendingBookings(Instant cutoffTime) {
-        List<Booking> expiredBookings = bookingRepository.findByStatusAndCreatedAtBefore(
-                BookingStatus.PENDING,
-                cutoffTime
-        );
+	@Transactional
+	public void expirePendingBookings(Instant cutoffTime) {
+		List<Booking> expiredBookings = bookingRepository.findByStatusAndCreatedAtBefore(
+				BookingStatus.PENDING,
+				cutoffTime
+		);
 
-        if (expiredBookings.isEmpty()) return;
+		if (expiredBookings.isEmpty()) return;
 
-        List<Seat> seatsToUpdate = new ArrayList<>();
+		List<Seat> seatsToUpdate = new ArrayList<>();
 
-        for (Booking booking : expiredBookings) {
-            booking.setStatus(BookingStatus.EXPIRED);
+		for (Booking booking : expiredBookings) {
+			booking.setStatus(BookingStatus.EXPIRED);
 
-            for (Seat seat : booking.getSeats()) {
-                seat.setBooking(null);
-                seat.setHeldByUser(null);
-                seat.setHeldAt(null);
-                seat.setSeatStatus(SeatStatus.AVAILABLE);
-                seatsToUpdate.add(seat);
-            }
-        }
+			for (Seat seat : booking.getSeats()) {
+				seat.setBooking(null);
+				seat.setHeldByUser(null);
+				seat.setHeldAt(null);
+				seat.setSeatStatus(SeatStatus.AVAILABLE);
+				seatsToUpdate.add(seat);
+			}
+		}
 
-        seatRepository.saveAll(seatsToUpdate);
-        bookingRepository.saveAll(expiredBookings);
-    }
+		seatRepository.saveAll(seatsToUpdate);
+		bookingRepository.saveAll(expiredBookings);
+	}
 
 
-    private void validateUserMadeBooking(Long userId, Booking booking) {
-        if (!booking.getUser().getId().equals(userId)) {
-            // I'm lying to the user by saying "Not Found" even though we found it.
-            // This prevents them from guessing valid IDs.
-            throw new EntityNotFoundException("Booking not found.");
-        }
-    }
+	private void validateUserMadeBooking(Long userId, Booking booking) {
+		if (!booking.getUser().getId().equals(userId)) {
+			// I'm lying to the user by saying "Not Found" even though we found it.
+			// This prevents them from guessing valid IDs.
+			throw new EntityNotFoundException("Booking not found.");
+		}
+	}
 
-    private BookingResponse buildBookingResponse(Booking booking) {
-        return BookingResponse.builder()
-                              .id(booking.getId())
-                              .bookingReference(booking.getBookingReference())
-                              .eventName(booking.getEvent().getName())
-                              .eventDateTime(booking.getEvent().getEventDateTime())
-                              .seats(booking.getSeats())
-                              .status(booking.getStatus().getDisplayName())
-                              .totalAmount(booking.getTotalAmount())
-                              .createdAt(booking.getCreatedAt())
-                              .build();
-    }
+	private BookingResponse buildBookingResponse(Booking booking) {
+		return BookingResponse.builder()
+		                      .id(booking.getId())
+		                      .bookingReference(booking.getBookingReference())
+		                      .eventName(booking.getEvent().getName())
+		                      .eventStartDateTime(booking.getEvent().getEventStartDateTime())
+		                      .eventEndDateTime(booking.getEvent().getEventEndDateTime())
+		                      .seats(booking.getSeats())
+		                      .status(booking.getStatus().getDisplayName())
+		                      .totalAmount(booking.getTotalAmount())
+		                      .createdAt(booking.getCreatedAt())
+		                      .build();
+	}
 
-    private String generateUniqueBookingReference() {
-        int maxRetries = 4;
-        int tries = 0;
-        String bookingReference;
-        do {
-            bookingReference = BookingReferenceGenerator.generate();
-            tries++;
+	private String generateUniqueBookingReference() {
+		int maxRetries = 4;
+		int tries = 0;
+		String bookingReference;
+		do {
+			bookingReference = BookingReferenceGenerator.generate();
+			tries++;
 
-            if (tries > maxRetries) {
-                throw new IllegalStateException(
-                        "Failed to generate a unique booking reference. Maximum tries reached.");
-            }
-        } while (bookingRepository.existsByBookingReference(bookingReference));
+			if (tries > maxRetries) {
+				throw new IllegalStateException(
+						"Failed to generate a unique booking reference. Maximum tries reached.");
+			}
+		} while (bookingRepository.existsByBookingReference(bookingReference));
 
-        return bookingReference;
-    }
+		return bookingReference;
+	}
 }

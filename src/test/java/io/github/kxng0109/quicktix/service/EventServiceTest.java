@@ -10,6 +10,8 @@ import io.github.kxng0109.quicktix.entity.Venue;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.EventStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
+import io.github.kxng0109.quicktix.event.EventCancelledEvent;
+import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
 import io.github.kxng0109.quicktix.repositories.SeatRepository;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -55,6 +58,9 @@ public class EventServiceTest {
 
 	@Mock
 	private SeatRepository seatRepository;
+
+	@Mock
+	private ApplicationEventPublisher applicationEventPublisher;
 
 	@InjectMocks
 	private EventService eventService;
@@ -295,6 +301,57 @@ public class EventServiceTest {
 		assertThrows(
 				EntityNotFoundException.class,
 				() -> eventService.updateEventById(eventId, request)
+		);
+
+		verify(eventRepository).findById(anyLong());
+		verify(eventRepository, never()).save(any(Event.class));
+	}
+
+	@Test
+	public void cancelEventById_should_cancelEvent_whenEventExistsAndIsUpcomingOrOngoing() {
+		when(eventRepository.findById(anyLong()))
+				.thenReturn(Optional.of(event));
+
+		eventService.cancelEventById(eventId);
+
+		assertEquals(EventStatus.CANCELLED, event.getStatus());
+
+		verify(eventRepository).findById(anyLong());
+		verify(eventRepository).save(any(Event.class));
+		verify(applicationEventPublisher).publishEvent(any(EventCancelledEvent.class));
+	}
+
+	@Test
+	public void cancelEventById_should_throwEntityNotFoundException_whenEventDoesNotExist() {
+		when(eventRepository.findById(anyLong()))
+				.thenReturn(Optional.empty());
+
+		assertThrows(
+				EntityNotFoundException.class,
+				() -> eventService.cancelEventById(eventId)
+		);
+
+		assertEquals(EventStatus.UPCOMING, event.getStatus());
+
+		verify(eventRepository).findById(anyLong());
+		verify(eventRepository, never()).save(any(Event.class));
+	}
+
+	@Test
+	public void cancelEventById_should_throwInvalidOperationException_whenEventStatusIsCompletedOrCancelled() {
+		event.setStatus(EventStatus.COMPLETED);
+
+		when(eventRepository.findById(anyLong()))
+				.thenReturn(Optional.of(event));
+
+		InvalidOperationException ex = assertThrows(
+				InvalidOperationException.class,
+				() -> eventService.cancelEventById(eventId)
+		);
+
+		assertEquals(
+				"Cannot cancel an event that is already" + event.getStatus(),
+				ex.getMessage()
 		);
 
 		verify(eventRepository).findById(anyLong());

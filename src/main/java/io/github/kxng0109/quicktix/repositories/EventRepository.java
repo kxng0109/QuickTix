@@ -15,17 +15,19 @@ import java.util.List;
 
 @Repository
 public interface EventRepository extends JpaRepository<Event, Long> {
-    Page<Event> findEventsByStatus(EventStatus status, Pageable pageable);
+	Page<Event> findEventsByStatus(EventStatus status, Pageable pageable);
 
-    Page<Event> findByVenue(Venue venue, Pageable pageable);
+	Page<Event> findByVenue(Venue venue, Pageable pageable);
 
-    Page<Event> findByEventStartDateTimeBetween(Instant eventDateTimeAfter, Instant eventDateTimeBefore, Pageable pageable);
+	Page<Event> findByEventStartDateTimeBetween(Instant eventDateTimeAfter, Instant eventDateTimeBefore, Pageable pageable);
 
-    //Using it to select events that are currently ongoing but whose status are not updated to show ONGOING
-    @Query("select e from Event e where e.status = :status and e.eventStartDateTime <= :now and e.eventEndDateTime > :now")
-    List<Event> findStartedEvent(@Param("status") EventStatus status, @Param("now") Instant now);
+	//Using it to select events that are currently ongoing but whose status are not updated to show ONGOING
+	@Query("select e from Event e where e.status = :status and e.eventStartDateTime <= :now and e.eventEndDateTime > :now")
+	List<Event> findStartedEvent(@Param("status") EventStatus status, @Param("now") Instant now);
 
 	//To find events that has finished but are still marked as completed or upcoming
 	@Query("select e from Event e where e.status in :statuses and e.eventEndDateTime < :now")
 	List<Event> findEventsToComplete(@Param("statuses") List<EventStatus> statuses, @Param("now") Instant now);
+
+	List<Event> findByStatus(EventStatus status);
 }

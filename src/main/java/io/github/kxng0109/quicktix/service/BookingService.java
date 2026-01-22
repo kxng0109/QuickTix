@@ -154,20 +154,32 @@ public class BookingService {
 			throw new InvalidOperationException("Cannot cancel booking. Status is already: " + booking.getStatus());
 		}
 
-		booking.setStatus(BookingStatus.CANCELLED);
-
-		List<Seat> seatsToRelease = booking.getSeats();
-		for (Seat seat : seatsToRelease) {
-			seat.setSeatStatus(SeatStatus.AVAILABLE);
-			seat.setHeldAt(null);
-			seat.setHeldByUser(null);
-			seat.setBooking(null);
-		}
-
-		seatRepository.saveAll(seatsToRelease);
-		bookingRepository.save(booking);
+		handleBookingCancellation(booking);
 	}
 
+	/**
+	 * INTERNAL USE ONLY.
+	 * Cancels a booking that has already been refunded by the PaymentService.
+	 * Skips the "Contact Support" check because the system initiated this.
+	 *
+	 * @param bookingId ID for the booking to be cancelled
+	 */
+	@Transactional
+	public void cancelRefundedBooking(Long bookingId) {
+		Booking booking = bookingRepository.findById(bookingId)
+		                                   .orElseThrow(() -> new EntityNotFoundException("Booking not found."));
+
+		// Logic: If we are here, the payment is already refunded, so we force cancel.
+		handleBookingCancellation(booking);
+	}
+
+	/**
+	 * Expire pending bookings for an event after a certain time.
+	 * This handles when payment for a booking isn't made within a certain time
+	 *
+	 * @param cutoffTime the {@link Instant time} in the past from now to which all pendig bookings should be
+	 *                   cancelled
+	 */
 	@Transactional
 	public void expirePendingBookings(Instant cutoffTime) {
 		List<Booking> expiredBookings = bookingRepository.findByStatusAndCreatedAtBefore(
@@ -175,6 +187,25 @@ public class BookingService {
 				cutoffTime
 		);
 
+		handleBookingCancellation(expiredBookings);
+	}
+
+	/**
+	 * Expire pending bookings for an event that was cancelled.
+	 *
+	 * @param eventId ID of the event
+	 */
+	@Transactional
+	public void expirePendingBookings(Long eventId) {
+		List<Booking> pendingBookings = bookingRepository.findByStatusAndEventId(
+				BookingStatus.PENDING,
+				eventId
+		);
+
+		handleBookingCancellation(pendingBookings);
+	}
+
+	private void handleBookingCancellation(List<Booking> expiredBookings) {
 		if (expiredBookings.isEmpty()) return;
 
 		List<Seat> seatsToUpdate = new ArrayList<>();
@@ -195,6 +226,21 @@ public class BookingService {
 		bookingRepository.saveAll(expiredBookings);
 	}
 
+
+	private void handleBookingCancellation(Booking booking) {
+		booking.setStatus(BookingStatus.CANCELLED);
+
+		List<Seat> seatsToRelease = booking.getSeats();
+		for (Seat seat : seatsToRelease) {
+			seat.setSeatStatus(SeatStatus.AVAILABLE);
+			seat.setHeldAt(null);
+			seat.setHeldByUser(null);
+			seat.setBooking(null);
+		}
+
+		seatRepository.saveAll(seatsToRelease);
+		bookingRepository.save(booking);
+	}
 
 	private void validateUserMadeBooking(Long userId, Booking booking) {
 		if (!booking.getUser().getId().equals(userId)) {

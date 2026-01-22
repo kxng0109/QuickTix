@@ -15,14 +15,16 @@ import java.util.Optional;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
-    Optional<Booking> findByBookingReference(String bookingReference);
+	Optional<Booking> findByBookingReference(String bookingReference);
 
-    boolean existsByBookingReference(String bookingReference);
+	boolean existsByBookingReference(String bookingReference);
 
-    Page<Booking> findByUserId(Long userId, Pageable pageable);
+	Page<Booking> findByUserId(Long userId, Pageable pageable);
 
-    List<Booking> findByStatusAndCreatedAtBefore(BookingStatus status, Instant createdAt);
+	List<Booking> findByStatusAndCreatedAtBefore(BookingStatus status, Instant createdAt);
 
-    @Query("SELECT b FROM Booking b LEFT JOIN FETCH b.payment WHERE b.id = :id")
-    Optional<Booking> findByIdWithPayment(@Param("id") Long id);
+	@Query("SELECT b FROM Booking b LEFT JOIN FETCH b.payment WHERE b.id = :id")
+	Optional<Booking> findByIdWithPayment(@Param("id") Long id);
+
+	List<Booking> findByStatusAndEventId(BookingStatus status, Long eventId);
 }

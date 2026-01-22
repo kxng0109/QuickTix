@@ -8,6 +8,8 @@ import io.github.kxng0109.quicktix.entity.Seat;
 import io.github.kxng0109.quicktix.entity.Venue;
 import io.github.kxng0109.quicktix.enums.EventStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
+import io.github.kxng0109.quicktix.event.EventCancelledEvent;
+import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
 import io.github.kxng0109.quicktix.repositories.SeatRepository;
@@ -15,6 +17,7 @@ import io.github.kxng0109.quicktix.repositories.VenueRepository;
 import io.github.kxng0109.quicktix.utils.EnumUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -31,7 +34,7 @@ public class EventService {
 	private final EventRepository eventRepository;
 	private final VenueRepository venueRepository;
 	private final SeatRepository seatRepository;
-	private final PaymentService paymentService;
+	private final ApplicationEventPublisher applicationEventPublisher;
 
 	@Transactional
 	public EventResponse createEvent(CreateEventRequest request) {
@@ -161,6 +164,23 @@ public class EventService {
 		);
 
 		return buildEventResponse(availableSeats, savedEvent);
+	}
+
+	@Transactional
+	public void cancelEventById(Long eventId) {
+		Event event = eventRepository.findById(eventId)
+		                             .orElseThrow(
+				                             () -> new EntityNotFoundException("Event not found")
+		                             );
+
+		if (event.getStatus() == EventStatus.COMPLETED || event.getStatus() == EventStatus.CANCELLED) {
+			throw new InvalidOperationException("Cannot cancel an event that is already" + event.getStatus());
+		}
+
+		event.setStatus(EventStatus.CANCELLED);
+		eventRepository.save(event);
+
+		applicationEventPublisher.publishEvent(new EventCancelledEvent(eventId));
 	}
 
 	@Transactional

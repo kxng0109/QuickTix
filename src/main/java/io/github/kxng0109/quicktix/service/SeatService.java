@@ -67,7 +67,7 @@ public class SeatService {
                                () -> new EntityNotFoundException("Event not found")
                        );
 
-        List<Seat> seats = seatRepository.findAllById(request.seatIds());
+        List<Seat> seats = seatRepository.findAllByIdWithLock(request.seatIds());
 
         if (seats.size() != request.seatIds().size()) {
             throw new EntityNotFoundException("One or more seat IDs are invalid");

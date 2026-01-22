@@ -183,14 +183,14 @@ public class SeatServiceTest {
                 .thenReturn(Optional.of(user));
         when(eventRepository.findById(anyLong()))
                 .thenReturn(Optional.of(event));
-        when(seatRepository.findAllById(eq(seatIds)))
+        when(seatRepository.findAllByIdWithLock(eq(seatIds)))
                 .thenReturn(seats);
 
         seatService.holdSeats(holdSeatsRequest);
 
         verify(userRepository).findById(anyLong());
         verify(eventRepository).findById(anyLong());
-        verify(seatRepository).findAllById(eq(seatIds));
+        verify(seatRepository).findAllByIdWithLock(eq(seatIds));
         verify(seatRepository).saveAll(seats);
     }
 
@@ -236,7 +236,7 @@ public class SeatServiceTest {
                 .thenReturn(Optional.of(user));
         when(eventRepository.findById(anyLong()))
                 .thenReturn(Optional.of(event));
-        when(seatRepository.findAllById(eq(seatIds)))
+        when(seatRepository.findAllByIdWithLock(eq(seatIds)))
                 .thenReturn(seats);
 
         assertThrows(
@@ -246,7 +246,7 @@ public class SeatServiceTest {
 
         verify(userRepository).findById(anyLong());
         verify(eventRepository).findById(anyLong());
-        verify(seatRepository).findAllById(eq(seatIds));
+        verify(seatRepository).findAllByIdWithLock(eq(seatIds));
         verify(seatRepository, never()).saveAll(seats);
     }
 
@@ -262,7 +262,7 @@ public class SeatServiceTest {
                 .thenReturn(Optional.of(user));
         when(eventRepository.findById(anyLong()))
                 .thenReturn(Optional.of(event));
-        when(seatRepository.findAllById(eq(seatIds)))
+        when(seatRepository.findAllByIdWithLock(eq(seatIds)))
                 .thenReturn(seats);
 
         assertThrows(
@@ -272,7 +272,7 @@ public class SeatServiceTest {
 
         verify(userRepository).findById(anyLong());
         verify(eventRepository).findById(anyLong());
-        verify(seatRepository).findAllById(eq(seatIds));
+        verify(seatRepository).findAllByIdWithLock(eq(seatIds));
         verify(seatRepository, never()).saveAll(seats);
     }
 
@@ -284,7 +284,7 @@ public class SeatServiceTest {
                 .thenReturn(Optional.of(user));
         when(eventRepository.findById(anyLong()))
                 .thenReturn(Optional.of(event));
-        when(seatRepository.findAllById(eq(seatIds)))
+        when(seatRepository.findAllByIdWithLock(eq(seatIds)))
                 .thenReturn(seats);
 
         assertThrows(
@@ -294,7 +294,7 @@ public class SeatServiceTest {
 
         verify(userRepository).findById(anyLong());
         verify(eventRepository).findById(anyLong());
-        verify(seatRepository).findAllById(eq(seatIds));
+        verify(seatRepository).findAllByIdWithLock(eq(seatIds));
         verify(seatRepository, never()).saveAll(seats);
     }
 

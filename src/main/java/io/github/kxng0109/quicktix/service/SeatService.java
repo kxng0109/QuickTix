@@ -56,7 +56,7 @@ public class SeatService {
     }
 
     @Transactional
-    public void holdSeats(HoldSeatsRequest request) {
+    public List<SeatResponse> holdSeats(HoldSeatsRequest request) {
         User user = userRepository.findById(request.userId())
                                   .orElseThrow(
                                           () -> new EntityNotFoundException("User not found")
@@ -90,7 +90,8 @@ public class SeatService {
             seat.setSeatStatus(SeatStatus.HELD);
         }
 
-        seatRepository.saveAll(seats);
+        List<Seat> savedSeats = seatRepository.saveAll(seats);
+        return savedSeats.stream().map(this::buildSeatResponse).toList();
     }
 
     @Transactional

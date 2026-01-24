@@ -178,15 +178,20 @@ public class SeatServiceTest {
     }
 
     @Test
-    public void holdSeats_should_holdSeatsAndReturnNothing_whenAllCorrect() {
+    public void holdSeats_should_holdSeatsAndReturnListOfSeatResponse_whenAllCorrect() {
         when(userRepository.findById(anyLong()))
                 .thenReturn(Optional.of(user));
         when(eventRepository.findById(anyLong()))
                 .thenReturn(Optional.of(event));
         when(seatRepository.findAllByIdWithLock(eq(seatIds)))
                 .thenReturn(seats);
+        when(seatRepository.saveAll(eq(seats)))
+                .thenReturn(seats);
 
-        seatService.holdSeats(holdSeatsRequest);
+        List<SeatResponse> response = seatService.holdSeats(holdSeatsRequest);
+
+        assertNotNull(response);
+        assertEquals(availableSeats, response.size());
 
         verify(userRepository).findById(anyLong());
         verify(eventRepository).findById(anyLong());

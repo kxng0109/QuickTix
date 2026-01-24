@@ -100,10 +100,8 @@ public class EventService {
 	}
 
 	@Transactional(readOnly = true)
-	public Page<EventResponse> getAllUpcomingEvents(String eventStatus, Pageable pageable) {
-		EventStatus status = EnumUtils.toEnum(EventStatus.class, eventStatus);
-
-		Page<Event> events = eventRepository.findEventsByStatus(status, pageable);
+	public Page<EventResponse> getAllUpcomingEvents(Pageable pageable) {
+		Page<Event> events = eventRepository.findEventsByStatus(EventStatus.UPCOMING, pageable);
 
 		return buildEventResponsePage(events);
 	}

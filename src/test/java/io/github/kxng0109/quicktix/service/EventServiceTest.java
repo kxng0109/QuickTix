@@ -174,7 +174,7 @@ public class EventServiceTest {
 		when(eventRepository.findEventsByStatus(any(EventStatus.class), any(Pageable.class)))
 				.thenReturn(eventPage);
 
-		Page<EventResponse> response = eventService.getAllUpcomingEvents("upcoming", pageable);
+		Page<EventResponse> response = eventService.getAllUpcomingEvents(pageable);
 
 		assertNotNull(response);
 		assertEquals(1, response.getTotalElements());

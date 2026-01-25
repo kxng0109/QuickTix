@@ -1,12 +1,16 @@
 package io.github.kxng0109.quicktix.controller;
 
 import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
+import io.github.kxng0109.quicktix.dto.response.BookingResponse;
 import io.github.kxng0109.quicktix.dto.response.UserResponse;
+import io.github.kxng0109.quicktix.service.BookingService;
 import io.github.kxng0109.quicktix.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
 	private final UserService userService;
+	private final BookingService bookingService;
 
 	@PostMapping
 	public ResponseEntity<UserResponse> createUser(
@@ -32,6 +37,17 @@ public class UserController {
 			@PathVariable @Min(value = 1, message = "User ID must be greater than 0") long id
 	) {
 		return ResponseEntity.ok(userService.getUserById(id));
+	}
+
+	@GetMapping("/{userId}/bookings")
+	public ResponseEntity<Page<BookingResponse>> getBookingsByUser(
+			@Min(value = 1, message = "User ID must have a value of at least 1") @PathVariable long userId,
+			Pageable pageable
+	){
+		return ResponseEntity.ok(bookingService.getBookingsByUser(
+				userId,
+				pageable
+		));
 	}
 
 	@GetMapping("/email/{email}")

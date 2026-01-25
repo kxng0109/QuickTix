@@ -3,8 +3,11 @@ package io.github.kxng0109.quicktix.controller;
 import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
 import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
+import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.enums.EventStatus;
+import io.github.kxng0109.quicktix.enums.SeatStatus;
 import io.github.kxng0109.quicktix.service.EventService;
+import io.github.kxng0109.quicktix.service.SeatService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +37,7 @@ public class EventControllerTest {
 
 	private final Long eventId = 100L;
 	private final Long venueId = 200L;
+	private final Long seatId = 300L;
 	private final CreateEventRequest badRequest = CreateEventRequest.builder().build();
 
 	@Autowired
@@ -44,6 +48,9 @@ public class EventControllerTest {
 
 	@MockitoBean
 	private EventService eventService;
+
+	@MockitoBean
+	private SeatService seatService;
 
 	private CreateEventRequest request;
 	private EventResponse response;
@@ -202,6 +209,138 @@ public class EventControllerTest {
 		       .andExpect(jsonPath("$.size").value(1))
 		       .andExpect(jsonPath("$.totalElements").value(1))
 		       .andExpect(jsonPath("$.totalPages").value(1));
+	}
+
+	@Test
+	public void getAllSeatsByEvent_should_return200OkAndAPageOfSeatResponse_whenIdIsValid() throws Exception {
+		Page<SeatResponse> seatResponsePage = new PageImpl<>(List.of(seatResponse()));
+		when(seatService.getAllSeatsByEvent(anyLong(), any(Pageable.class)))
+				.thenReturn(seatResponsePage);
+
+		mockMvc.perform(
+				       get("/api/v1/events/{eventId}/seats", eventId)
+						       .param("page", "0")
+						       .param("size", "10")
+						       .param("sort", "id,desc")
+						       .contentType(MediaType.APPLICATION_JSON)
+		       ).andExpect(status().isOk())
+		       .andExpect(jsonPath("$.content").isArray())
+		       .andExpect(jsonPath("$.content.length()").value(1))
+		       .andExpect(jsonPath("$.size").value(1))
+		       .andExpect(jsonPath("$.content[0].id").value(seatId));
+	}
+
+	@Test
+	public void getAllSeatsByEvent_should_useDefaults_whenPageableParamsAreMissing() throws Exception {
+		Page<SeatResponse> seatResponsePage = new PageImpl<>(List.of(seatResponse()));
+		when(seatService.getAllSeatsByEvent(anyLong(), any(Pageable.class)))
+				.thenReturn(seatResponsePage);
+
+		mockMvc.perform(
+				       get("/api/v1/events/{eventId}/seats", eventId)
+						       .contentType(MediaType.APPLICATION_JSON)
+		       ).andExpect(status().isOk())
+		       .andExpect(jsonPath("$.content").isArray())
+		       .andExpect(jsonPath("$.content.length()").value(1))
+		       .andExpect(jsonPath("$.size").value(1))
+		       .andExpect(jsonPath("$.content[0].id").value(seatId));
+	}
+
+	@Test
+	public void getAllSeatsByEvent_should_return400BadRequest_whenIdIsInvalid() throws Exception {
+		mockMvc.perform(
+				       get("/api/v1/events/{eventId}/seats", -1)
+						       .param("page", "0")
+						       .param("size", "10")
+						       .param("sort", "id,desc")
+						       .contentType(MediaType.APPLICATION_JSON)
+		       ).andExpect(status().isBadRequest())
+		       .andExpect(jsonPath("$.statusCode").value(400))
+		       .andExpect(jsonPath("$.path").value("/api/v1/events/-1/seats"));
+
+		verify(seatService, never()).getAllSeatsByEvent(anyLong(), any(Pageable.class));
+	}
+
+	@Test
+	public void getAllSeatsByEvent_should_return404NotFound_whenEventIsNotFound() throws Exception {
+		doThrow(EntityNotFoundException.class)
+				.when(seatService).getAllSeatsByEvent(anyLong(), any(Pageable.class));
+
+		mockMvc.perform(
+				       get("/api/v1/events/{eventId}/seats", eventId)
+						       .param("page", "0")
+						       .param("size", "10")
+						       .param("sort", "id,desc")
+						       .contentType(MediaType.APPLICATION_JSON)
+		       ).andExpect(status().isNotFound())
+		       .andExpect(jsonPath("$.statusCode").value(404))
+		       .andExpect(jsonPath("$.path").value("/api/v1/events/100/seats"));
+	}
+
+	@Test
+	public void getAvailableSeats_should_return200OkAndAPageOfSeatResponse_whenIdIsValid() throws Exception {
+		Page<SeatResponse> seatResponsePage = new PageImpl<>(List.of(seatResponse()));
+		when(seatService.getAvailableSeats(anyLong(), any(Pageable.class)))
+				.thenReturn(seatResponsePage);
+
+		mockMvc.perform(
+				       get("/api/v1/events/{eventId}/seats/available", eventId)
+						       .param("page", "0")
+						       .param("size", "10")
+						       .param("sort", "id,desc")
+						       .contentType(MediaType.APPLICATION_JSON)
+		       ).andExpect(status().isOk())
+		       .andExpect(jsonPath("$.content").isArray())
+		       .andExpect(jsonPath("$.content.length()").value(1))
+		       .andExpect(jsonPath("$.size").value(1))
+		       .andExpect(jsonPath("$.content[0].id").value(seatId));
+	}
+
+	@Test
+	public void getAvailableSeats_should_useDefaults_whenPageableParamsAreMissing() throws Exception {
+		Page<SeatResponse> seatResponsePage = new PageImpl<>(List.of(seatResponse()));
+		when(seatService.getAvailableSeats(anyLong(), any(Pageable.class)))
+				.thenReturn(seatResponsePage);
+
+		mockMvc.perform(
+				       get("/api/v1/events/{eventId}/seats/available", eventId)
+						       .contentType(MediaType.APPLICATION_JSON)
+		       ).andExpect(status().isOk())
+		       .andExpect(jsonPath("$.content").isArray())
+		       .andExpect(jsonPath("$.content.length()").value(1))
+		       .andExpect(jsonPath("$.size").value(1))
+		       .andExpect(jsonPath("$.content[0].id").value(seatId));
+	}
+
+	@Test
+	public void getAvailableSeats_should_return400BadRequest_whenIdIsInvalid() throws Exception {
+		mockMvc.perform(
+				       get("/api/v1/events/{eventId}/seats/available", -1)
+						       .param("page", "0")
+						       .param("size", "10")
+						       .param("sort", "id,desc")
+						       .contentType(MediaType.APPLICATION_JSON)
+		       ).andExpect(status().isBadRequest())
+		       .andExpect(jsonPath("$.statusCode").value(400))
+		       .andExpect(jsonPath("$.path").value("/api/v1/events/-1/seats/available"));
+
+		verify(seatService, never()).getAvailableSeats(anyLong(), any(Pageable.class));
+	}
+
+	@Test
+	public void getAvailableSeats_should_return404NotFound_whenEventIsNotFound() throws Exception {
+		doThrow(EntityNotFoundException.class)
+				.when(seatService).getAvailableSeats(anyLong(), any(Pageable.class));
+
+		mockMvc.perform(
+				       get("/api/v1/events/{eventId}/seats/available", eventId)
+						       .param("page", "0")
+						       .param("size", "10")
+						       .param("sort", "id,desc")
+						       .contentType(MediaType.APPLICATION_JSON)
+		       ).andExpect(status().isNotFound())
+		       .andExpect(jsonPath("$.statusCode").value(404))
+		       .andExpect(jsonPath("$.path").value("/api/v1/events/100/seats/available"));
 	}
 
 	@Test
@@ -386,5 +525,14 @@ public class EventControllerTest {
 		       ).andExpect(status().isNotFound())
 		       .andExpect(jsonPath("$.statusCode").value(404))
 		       .andExpect(jsonPath("$.path").value("/api/v1/events/"));
+	}
+
+	private SeatResponse seatResponse() {
+		return SeatResponse.builder()
+		                   .id(seatId)
+		                   .seatNumber(23)
+		                   .rowName("E")
+		                   .status(SeatStatus.AVAILABLE.getDisplayName())
+		                   .build();
 	}
 }

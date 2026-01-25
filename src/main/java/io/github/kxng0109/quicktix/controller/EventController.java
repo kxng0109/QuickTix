@@ -3,7 +3,9 @@ package io.github.kxng0109.quicktix.controller;
 import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
 import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
+import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.service.EventService;
+import io.github.kxng0109.quicktix.service.SeatService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class EventController {
 
 	private final EventService eventService;
+	private final SeatService seatService;
 
 	@PostMapping
 	public ResponseEntity<EventResponse> createEvent(
@@ -41,6 +44,22 @@ public class EventController {
 			Pageable pageable
 	) {
 		return ResponseEntity.ok(eventService.getAllUpcomingEvents(pageable));
+	}
+
+	@GetMapping("/{eventId}/seats")
+	public ResponseEntity<Page<SeatResponse>> getAllSeatsByEvent(
+			@Min(value = 1, message = "Event ID must have a value of at least 1") @PathVariable long eventId,
+			Pageable pageable
+	) {
+		return ResponseEntity.ok(seatService.getAllSeatsByEvent(eventId, pageable));
+	}
+
+	@GetMapping("/{eventId}/seats/available")
+	public ResponseEntity<Page<SeatResponse>> getAllAvailableSeats(
+			@Min(value = 1, message = "Event ID must have a value of at least 1") @PathVariable long eventId,
+			Pageable pageable
+	) {
+		return ResponseEntity.ok(seatService.getAvailableSeats(eventId, pageable));
 	}
 
 	@GetMapping("/venue/{venueId}")

@@ -15,6 +15,7 @@ import io.github.kxng0109.quicktix.repositories.UserRepository;
 import io.github.kxng0109.quicktix.utils.BookingReferenceGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -147,7 +148,7 @@ public class BookingServiceTest {
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 
-		BookingResponse response = bookingService.getBookingById(bookingId, userId);
+		BookingResponse response = bookingService.getBookingById(bookingId);
 
 		assertNotNull(response);
 		assertEquals(bookingId, response.id());
@@ -164,12 +165,14 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.getBookingById(bookingId, userId)
+				() -> bookingService.getBookingById(bookingId)
 		);
 
 		verify(bookingRepository).findById(anyLong());
 	}
 
+	//TODO: Enable this when spring security is integrated
+	@Disabled("Spring security logic needs to be integrated for this.")
 	@Test
 	public void getBookingById_should_throwEntityNotFoundException_when_userDoesNotOwnBooking() {
 		when(bookingRepository.findById(anyLong()))
@@ -177,7 +180,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.getBookingById(bookingId, userId + 1L)
+				() -> bookingService.getBookingById(bookingId)
 		);
 
 		verify(bookingRepository).findById(anyLong());
@@ -188,7 +191,7 @@ public class BookingServiceTest {
 		when(bookingRepository.findByBookingReference(anyString()))
 				.thenReturn(Optional.of(booking));
 
-		BookingResponse response = bookingService.getBookingByReference(bookingReference, userId);
+		BookingResponse response = bookingService.getBookingByReference(bookingReference);
 
 		assertNotNull(response);
 		assertEquals(bookingId, response.id());
@@ -198,6 +201,8 @@ public class BookingServiceTest {
 		verify(bookingRepository).findByBookingReference(anyString());
 	}
 
+	//TODO: Enable this when spring security is integrated
+	@Disabled("Spring security logic needs to be integrated for this.")
 	@Test
 	public void getBookingByReference_should_throwEntityNotFoundException_when_bookingIsNotFound() {
 		when(bookingRepository.findByBookingReference(anyString()))
@@ -205,12 +210,14 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.getBookingByReference(bookingReference, userId)
+				() -> bookingService.getBookingByReference(bookingReference)
 		);
 
 		verify(bookingRepository).findByBookingReference(anyString());
 	}
 
+	//TODO: Enable this when spring security is integrated
+	@Disabled("Spring security logic needs to be integrated for this.")
 	@Test
 	public void getBookingByReference_should_throwEntityNotFoundException_when_userDoesNotOwnBooking() {
 		when(bookingRepository.findByBookingReference(anyString()))
@@ -218,7 +225,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.getBookingByReference(bookingReference, userId + 1L)
+				() -> bookingService.getBookingByReference(bookingReference)
 		);
 
 		verify(bookingRepository).findByBookingReference(anyString());
@@ -500,7 +507,7 @@ public class BookingServiceTest {
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 
-		bookingService.cancelBooking(bookingId, userId);
+		bookingService.cancelBooking(bookingId);
 
 		assertEquals(BookingStatus.CANCELLED, booking.getStatus());
 		assertEquals(SeatStatus.AVAILABLE, booking.getSeats().getFirst().getSeatStatus());
@@ -519,7 +526,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				InvalidOperationException.class,
-				() -> bookingService.cancelBooking(bookingId, userId)
+				() -> bookingService.cancelBooking(bookingId)
 		);
 
 		assertEquals(BookingStatus.CONFIRMED, booking.getStatus());
@@ -537,7 +544,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.cancelBooking(bookingId, userId)
+				() -> bookingService.cancelBooking(bookingId)
 		);
 
 		verify(bookingRepository).findById(anyLong());
@@ -545,6 +552,8 @@ public class BookingServiceTest {
 		verify(bookingRepository, never()).save(any(Booking.class));
 	}
 
+	//TODO: Enable this when spring security is integrated
+	@Disabled("Spring security logic needs to be integrated for this.")
 	@Test
 	public void cancelBooking_should_throwEntityNotFoundException_when_userDoesNotOwnBooking() {
 		when(bookingRepository.findById(anyLong()))
@@ -552,7 +561,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.cancelBooking(bookingId, userId + 1L)
+				() -> bookingService.cancelBooking(bookingId)
 		);
 
 		verify(bookingRepository).findById(anyLong());

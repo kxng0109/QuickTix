@@ -34,25 +34,27 @@ public class BookingService {
 	private final SeatService seatService;
 
 	@Transactional(readOnly = true)
-	public BookingResponse getBookingById(Long bookId, Long userId) {
+	public BookingResponse getBookingById(Long bookId) {
 		Booking booking = bookingRepository.findById(bookId)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Booking not found.")
 		                                   );
 
-		validateUserMadeBooking(userId, booking);
+		//TODO: Spring security should handle this!
+//		validateUserMadeBooking(userId, booking);
 
 		return buildBookingResponse(booking);
 	}
 
 	@Transactional(readOnly = true)
-	public BookingResponse getBookingByReference(String bookingReference, Long userId) {
+	public BookingResponse getBookingByReference(String bookingReference) {
 		Booking booking = bookingRepository.findByBookingReference(bookingReference)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Booking not found.")
 		                                   );
 
-		validateUserMadeBooking(userId, booking);
+		//TODO: Once again, Spring Security
+//		validateUserMadeBooking(userId, booking);
 
 		return buildBookingResponse(booking);
 	}
@@ -136,13 +138,13 @@ public class BookingService {
 	}
 
 	@Transactional
-	public void cancelBooking(Long bookingId, Long userId) {
+	public void cancelBooking(Long bookingId) {
 		Booking booking = bookingRepository.findById(bookingId)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Booking not found.")
 		                                   );
-
-		validateUserMadeBooking(userId, booking);
+		//TODO: Spring security once again babyyyy
+//		validateUserMadeBooking(userId, booking);
 
 		if (booking.getStatus().equals(BookingStatus.CONFIRMED)) {
 			//TODO: in the future, I think we'll need to trigger refunds
@@ -177,7 +179,7 @@ public class BookingService {
 	 * Expire pending bookings for an event after a certain time.
 	 * This handles when payment for a booking isn't made within a certain time
 	 *
-	 * @param cutoffTime the {@link Instant time} in the past from now to which all pendig bookings should be
+	 * @param cutoffTime the {@link Instant time} in the past from now to which all pending bookings should be
 	 *                   cancelled
 	 */
 	@Transactional

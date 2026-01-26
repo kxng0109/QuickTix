@@ -203,6 +203,25 @@ public class PaymentServiceTest {
 	}
 
 	@Test
+	public void verifyPayment_should_returnPaymentResponseAndMarkPaymentAsFailed_when_paymentFails() {
+		when(paymentRepository.findByTransactionReference(anyString()))
+				.thenReturn(Optional.of(payment));
+		when(paymentGateway.verifyTransaction(anyString()))
+				.thenReturn(false);
+
+		PaymentResponse response = paymentService.verifyPayment(transferReference);
+
+		assertNotNull(response);
+		assertEquals(PaymentStatus.FAILED.getDisplayName(), response.status());
+		assertEquals(paymentId, response.paymentId());
+
+		verify(paymentRepository).findByTransactionReference(anyString());
+		verify(paymentGateway).verifyTransaction(anyString());
+		verify(paymentRepository).save(any(Payment.class));
+		verify(bookingService, never()).confirmBooking(anyLong());
+	}
+
+	@Test
 	public void verifyPayment_should_returnPaymentResponse_when_paymentIsAlreadySuccessful() {
 		payment.setStatus(PaymentStatus.COMPLETED);
 
@@ -234,26 +253,6 @@ public class PaymentServiceTest {
 		verify(paymentRepository).findByTransactionReference(anyString());
 		verify(paymentGateway, never()).verifyTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
-		verify(bookingService, never()).confirmBooking(anyLong());
-	}
-
-	@Test
-	public void verifyPayment_should_throwPaymentFailedException_when_paymentFails() {
-		when(paymentRepository.findByTransactionReference(anyString()))
-				.thenReturn(Optional.of(payment));
-		when(paymentGateway.verifyTransaction(anyString()))
-				.thenReturn(false);
-
-		assertThrows(
-				PaymentFailedException.class,
-				() -> paymentService.verifyPayment(transferReference)
-		);
-
-		assertEquals(PaymentStatus.FAILED, payment.getStatus());
-
-		verify(paymentRepository).findByTransactionReference(anyString());
-		verify(paymentGateway).verifyTransaction(anyString());
-		verify(paymentRepository).save(any(Payment.class));
 		verify(bookingService, never()).confirmBooking(anyLong());
 	}
 

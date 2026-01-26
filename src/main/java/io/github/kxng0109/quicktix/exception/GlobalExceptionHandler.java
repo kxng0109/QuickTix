@@ -90,7 +90,7 @@ public class GlobalExceptionHandler {
 			PaymentFailedException ex,
 			HttpServletRequest request
 	) {
-		HttpStatus status = HttpStatus.BAD_REQUEST;
+		HttpStatus status = HttpStatus.BAD_GATEWAY;
 		return buildErrorResponse(ex, request, status);
 	}
 

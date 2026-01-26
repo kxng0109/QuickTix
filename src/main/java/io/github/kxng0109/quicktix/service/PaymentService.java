@@ -96,7 +96,6 @@ public class PaymentService {
 		} else {
 			payment.setStatus(PaymentStatus.FAILED);
 			paymentRepository.save(payment);
-			throw new PaymentFailedException("Payment verification failed");
 		}
 
 		return buildPaymentResponse(payment);

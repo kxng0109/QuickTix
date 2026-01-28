@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.exception;
 
 import io.github.kxng0109.quicktix.dto.exception.ErrorResponse;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Hidden
 public class GlobalExceptionHandler {
 	@ExceptionHandler(UserExistsException.class)
 	public ResponseEntity<ErrorResponse> handleUserExistsException(

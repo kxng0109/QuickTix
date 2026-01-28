@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.InitiateBookingRequest;
 import io.github.kxng0109.quicktix.dto.response.BookingResponse;
+import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.entity.*;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
@@ -253,13 +254,22 @@ public class BookingService {
 	}
 
 	private BookingResponse buildBookingResponse(Booking booking) {
+		List<SeatResponse> seatResponses = booking.getSeats().stream()
+		                                          .map(seat -> SeatResponse.builder()
+		                                                                   .id(seat.getId())
+		                                                                   .seatNumber(seat.getSeatNumber())
+		                                                                   .rowName(seat.getRowName())
+		                                                                   .status(seat.getSeatStatus().getDisplayName())
+		                                                                   .build())
+		                                          .toList();
+
 		return BookingResponse.builder()
 		                      .id(booking.getId())
 		                      .bookingReference(booking.getBookingReference())
 		                      .eventName(booking.getEvent().getName())
 		                      .eventStartDateTime(booking.getEvent().getEventStartDateTime())
 		                      .eventEndDateTime(booking.getEvent().getEventEndDateTime())
-		                      .seats(booking.getSeats())
+		                      .seats(seatResponses)
 		                      .status(booking.getStatus().getDisplayName())
 		                      .totalAmount(booking.getTotalAmount())
 		                      .createdAt(booking.getCreatedAt())

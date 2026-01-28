@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.InitiateBookingRequest;
 import io.github.kxng0109.quicktix.dto.response.BookingResponse;
+import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.entity.*;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.EventStatus;
@@ -278,7 +279,10 @@ public class BookingServiceTest {
 		BookingResponse response = bookingService.createPendingBooking(bookingRequest);
 
 		assertNotNull(response);
-		assertEquals(List.of(seat1, seat2), response.seats());
+		assertEquals(
+				List.of(createSeatResponse(seat1), createSeatResponse(seat2)),
+				response.seats()
+		);
 		assertEquals(totalAmount, response.totalAmount());
 
 		verify(eventRepository).findById(anyLong());
@@ -638,5 +642,15 @@ public class BookingServiceTest {
 
 		verify(bookingRepository).findById(bookingId);
 		verify(bookingRepository, never()).save(any(Booking.class));
+	}
+
+
+	private SeatResponse createSeatResponse(Seat seat) {
+		return SeatResponse.builder()
+		                   .id(seat.getId())
+		                   .seatNumber(seat.getSeatNumber())
+		                   .rowName(seat.getRowName())
+		                   .status(seat.getSeatStatus().getDisplayName())
+		                   .build();
 	}
 }

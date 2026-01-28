@@ -14,7 +14,7 @@ public record BookingResponse(
         String eventName,
         Instant eventStartDateTime,
 		Instant eventEndDateTime,
-        List<Seat> seats,
+        List<SeatResponse> seats,
         String status,
         BigDecimal totalAmount,
         Instant createdAt

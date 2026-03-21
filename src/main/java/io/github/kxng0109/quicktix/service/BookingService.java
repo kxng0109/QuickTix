@@ -12,6 +12,7 @@ import io.github.kxng0109.quicktix.repositories.BookingRepository;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
 import io.github.kxng0109.quicktix.repositories.SeatRepository;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
+import io.github.kxng0109.quicktix.utils.AssertOwnershipOrAdmin;
 import io.github.kxng0109.quicktix.utils.BookingReferenceGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -35,37 +36,38 @@ public class BookingService {
 	private final SeatService seatService;
 
 	@Transactional(readOnly = true)
-	public BookingResponse getBookingById(Long bookId) {
+	public BookingResponse getBookingById(Long bookId, User currentUser) {
 		Booking booking = bookingRepository.findById(bookId)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Booking not found.")
 		                                   );
 
-		//TODO: Spring security should handle this!
-//		validateUserMadeBooking(userId, booking);
+		AssertOwnershipOrAdmin.check(currentUser, booking.getUser());
 
 		return buildBookingResponse(booking);
 	}
 
 	@Transactional(readOnly = true)
-	public BookingResponse getBookingByReference(String bookingReference) {
+	public BookingResponse getBookingByReference(String bookingReference, User currentUser) {
 		Booking booking = bookingRepository.findByBookingReference(bookingReference)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Booking not found.")
 		                                   );
 
-		//TODO: Once again, Spring Security
-//		validateUserMadeBooking(userId, booking);
+		AssertOwnershipOrAdmin.check(currentUser, booking.getUser());
+
 
 		return buildBookingResponse(booking);
 	}
 
 	@Transactional(readOnly = true)
-	public Page<BookingResponse> getBookingsByUser(Long userId, Pageable pageable) {
+	public Page<BookingResponse> getBookingsByUser(Long userId, Pageable pageable, User currentUser) {
 		User user = userRepository.findById(userId)
 		                          .orElseThrow(
 				                          () -> new EntityNotFoundException("User not found.")
 		                          );
+
+		AssertOwnershipOrAdmin.check(currentUser, user);
 
 		Page<Booking> bookings = bookingRepository.findByUserId(user.getId(), pageable);
 
@@ -73,7 +75,7 @@ public class BookingService {
 	}
 
 	@Transactional
-	public BookingResponse createPendingBooking(InitiateBookingRequest request) {
+	public BookingResponse createPendingBooking(InitiateBookingRequest request, User currentUser) {
 		Event event = eventRepository.findById(request.eventId())
 		                             .orElseThrow(
 				                             () -> new EntityNotFoundException("Event not found.")
@@ -83,6 +85,8 @@ public class BookingService {
 		                          .orElseThrow(
 				                          () -> new EntityNotFoundException("User not found.")
 		                          );
+
+		AssertOwnershipOrAdmin.check(currentUser, user);
 
 		List<Seat> seats = seatService.validateAndGetHeldSeats(
 				request.seats(),
@@ -139,13 +143,13 @@ public class BookingService {
 	}
 
 	@Transactional
-	public void cancelBooking(Long bookingId) {
+	public void cancelBooking(Long bookingId, User currentUser) {
 		Booking booking = bookingRepository.findById(bookingId)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Booking not found.")
 		                                   );
-		//TODO: Spring security once again babyyyy
-//		validateUserMadeBooking(userId, booking);
+
+		AssertOwnershipOrAdmin.check(currentUser, booking.getUser());
 
 		if (booking.getStatus().equals(BookingStatus.CONFIRMED)) {
 			//TODO: in the future, I think we'll need to trigger refunds
@@ -245,21 +249,14 @@ public class BookingService {
 		bookingRepository.save(booking);
 	}
 
-	private void validateUserMadeBooking(Long userId, Booking booking) {
-		if (!booking.getUser().getId().equals(userId)) {
-			// I'm lying to the user by saying "Not Found" even though we found it.
-			// This prevents them from guessing valid IDs.
-			throw new EntityNotFoundException("Booking not found.");
-		}
-	}
-
 	private BookingResponse buildBookingResponse(Booking booking) {
 		List<SeatResponse> seatResponses = booking.getSeats().stream()
 		                                          .map(seat -> SeatResponse.builder()
 		                                                                   .id(seat.getId())
 		                                                                   .seatNumber(seat.getSeatNumber())
 		                                                                   .rowName(seat.getRowName())
-		                                                                   .status(seat.getSeatStatus().getDisplayName())
+		                                                                   .status(seat.getSeatStatus()
+		                                                                               .getDisplayName())
 		                                                                   .build())
 		                                          .toList();
 

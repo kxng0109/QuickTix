@@ -1,11 +1,16 @@
 package io.github.kxng0109.quicktix.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kxng0109.quicktix.dto.request.PaymentRequest;
 import io.github.kxng0109.quicktix.dto.response.PaymentResponse;
+import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.PaymentMethod;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
+import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.exception.InvalidAmountException;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
+import io.github.kxng0109.quicktix.service.CustomUserDetailsService;
+import io.github.kxng0109.quicktix.service.JwtService;
 import io.github.kxng0109.quicktix.service.PaymentService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,14 +20,15 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -40,14 +46,20 @@ public class PaymentControllerTest {
 	@Autowired
 	private MockMvc mockMvc;
 
-	@Autowired
-	private ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@MockitoBean
 	private PaymentService paymentService;
 
+	@MockitoBean
+	private JwtService jwtService;
+
+	@MockitoBean
+	private CustomUserDetailsService userDetailsService;
+
 	private PaymentRequest request;
 	private PaymentResponse response;
+	private User adminUser;
 
 	@BeforeEach
 	public void setup() {
@@ -65,6 +77,13 @@ public class PaymentControllerTest {
 		                          .paymentMethod(paymentMethod.getDisplayName())
 		                          .paidAt(Instant.now())
 		                          .build();
+
+		adminUser = User.builder()
+		                .id(1L)
+		                .email("admin@quicktix.com")
+		                .role(Role.ADMIN)
+		                .passwordHash("hashed")
+		                .build();
 	}
 
 	@Test
@@ -74,6 +93,7 @@ public class PaymentControllerTest {
 
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isCreated())
@@ -88,6 +108,7 @@ public class PaymentControllerTest {
 		PaymentRequest badRequest = PaymentRequest.builder().build();
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
@@ -105,6 +126,7 @@ public class PaymentControllerTest {
 
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isNotFound())
@@ -119,6 +141,7 @@ public class PaymentControllerTest {
 
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isBadRequest())
@@ -133,6 +156,7 @@ public class PaymentControllerTest {
 
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isBadRequest())
@@ -147,6 +171,7 @@ public class PaymentControllerTest {
 
 		mockMvc.perform(
 				       get("/api/v1/payments/verify/{transactionReference}", transactionReference)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 		       ).andExpect(status().isOk())
 		       .andExpect(jsonPath("$.paymentId").value(paymentId))
@@ -159,6 +184,7 @@ public class PaymentControllerTest {
 	public void verifyPayment_should_return400BadRequest_whenTransactionReferenceIsInvalid() throws Exception {
 		mockMvc.perform(
 				       get("/api/v1/payments/verify/{transactionReference}", " ")
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.statusCode").value(400))
@@ -168,12 +194,13 @@ public class PaymentControllerTest {
 	}
 
 	@Test
-	public void verifyPayment_should_return404NotFound_whenBookingIsNotFound() throws Exception {
+	public void verifyPayment_should_return404NotFound_whenPaymentIsNotFound() throws Exception {
 		when(paymentService.verifyPayment(anyString()))
 				.thenThrow(EntityNotFoundException.class);
 
 		mockMvc.perform(
 				       get("/api/v1/payments/verify/{transactionReference}", transactionReference)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 		       ).andExpect(status().isNotFound())
 		       .andExpect(jsonPath("$.statusCode").value(404))

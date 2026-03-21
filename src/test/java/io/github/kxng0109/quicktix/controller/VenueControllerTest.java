@@ -1,9 +1,14 @@
 package io.github.kxng0109.quicktix.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kxng0109.quicktix.dto.request.CreateVenueRequest;
 import io.github.kxng0109.quicktix.dto.response.VenueResponse;
+import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.entity.Venue;
+import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.exception.ResourceInUseException;
+import io.github.kxng0109.quicktix.service.CustomUserDetailsService;
+import io.github.kxng0109.quicktix.service.JwtService;
 import io.github.kxng0109.quicktix.service.VenueService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,12 +21,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,14 +41,20 @@ public class VenueControllerTest {
 	@Autowired
 	private MockMvc mockMvc;
 
-	@Autowired
-	private ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@MockitoBean
 	private VenueService venueService;
 
+	@MockitoBean
+	private JwtService jwtService;
+
+	@MockitoBean
+	private CustomUserDetailsService userDetailsService;
+
 	private CreateVenueRequest request;
 	private VenueResponse response;
+	private User adminUser;
 
 	@BeforeEach
 	public void setup() {
@@ -68,6 +80,13 @@ public class VenueControllerTest {
 		                        .city(venue.getCity())
 		                        .totalCapacity(venue.getTotalCapacity())
 		                        .build();
+
+		adminUser = User.builder()
+		                .id(1L)
+		                .email("admin@quicktix.com")
+		                .role(Role.ADMIN)
+		                .passwordHash("hashed")
+		                .build();
 	}
 
 	@Test
@@ -77,6 +96,7 @@ public class VenueControllerTest {
 
 		mockMvc.perform(
 				       post("/api/v1/venues")
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isCreated())
@@ -89,6 +109,7 @@ public class VenueControllerTest {
 	public void createVenue_should_return400BadRequest_whenRequestIsInvalid() throws Exception {
 		mockMvc.perform(
 				       post("/api/v1/venues")
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
@@ -104,7 +125,7 @@ public class VenueControllerTest {
 				.thenReturn(response);
 
 		mockMvc.perform(
-				       get("/api/v1/venues/" + venueId)
+				       get("/api/v1/venues/{id}", venueId)
 						       .contentType(MediaType.APPLICATION_JSON)
 		       ).andExpect(status().isOk())
 		       .andExpect(jsonPath("$.id").value(venueId))
@@ -114,7 +135,7 @@ public class VenueControllerTest {
 
 	@Test
 	public void getVenueById_should_return400BadRequest_whenIdIsInvalid() throws Exception {
-		String uriTemplate = "/api/v1/venues/" + -1;
+		String uriTemplate = "/api/v1/venues/-1";
 
 		mockMvc.perform(
 				       get(uriTemplate)
@@ -163,7 +184,7 @@ public class VenueControllerTest {
 	}
 
 	@Test
-	public void getAllVenue_should_useDefaultsAnd_whenParamsAreMissing() throws Exception {
+	public void getAllVenue_should_useDefaults_whenParamsAreMissing() throws Exception {
 		Page<VenueResponse> venueResponsePage = new PageImpl<>(List.of(response));
 		when(venueService.getAllVenues(any(Pageable.class)))
 				.thenReturn(venueResponsePage);
@@ -184,7 +205,7 @@ public class VenueControllerTest {
 				.thenReturn(venueResponsePage);
 
 		mockMvc.perform(
-				       get("/api/v1/venues/city/" + "lagos")
+				       get("/api/v1/venues/city/{city}", "lagos")
 						       .param("page", "0")
 						       .param("size", "10")
 						       .param("sort", "name,asc")
@@ -196,8 +217,8 @@ public class VenueControllerTest {
 	}
 
 	@Test
-	public void getVenuesByCity_should_useDefaultsAnd_whenPageableParamsAreMissing() throws Exception {
-		String uriTemplate = "/api/v1/venues/city/" + "lagos";
+	public void getVenuesByCity_should_useDefaults_whenPageableParamsAreMissing() throws Exception {
+		String uriTemplate = "/api/v1/venues/city/lagos";
 
 		Page<VenueResponse> venueResponsePage = new PageImpl<>(List.of(response));
 
@@ -215,7 +236,7 @@ public class VenueControllerTest {
 
 	@Test
 	public void getVenuesByCity_should_return404NotFound_whenVenueIsNotFound() throws Exception {
-		String uriTemplate = "/api/v1/venues/city/" + "lagos";
+		String uriTemplate = "/api/v1/venues/city/lagos";
 
 		doThrow(EntityNotFoundException.class)
 				.when(venueService)
@@ -238,7 +259,8 @@ public class VenueControllerTest {
 				.thenReturn(response);
 
 		mockMvc.perform(
-				       put("/api/v1/venues/" + venueId)
+				       put("/api/v1/venues/{id}", venueId)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isOk())
@@ -249,10 +271,11 @@ public class VenueControllerTest {
 
 	@Test
 	public void updateVenueById_should_return400BadRequest_whenIdIsInvalid() throws Exception {
-		String uriTemplate = "/api/v1/venues/" + -1;
+		String uriTemplate = "/api/v1/venues/-1";
 
 		mockMvc.perform(
 				       put(uriTemplate)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isBadRequest())
@@ -268,6 +291,7 @@ public class VenueControllerTest {
 
 		mockMvc.perform(
 				       put(uriTemplate)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
@@ -287,6 +311,7 @@ public class VenueControllerTest {
 
 		mockMvc.perform(
 				       put(uriTemplate)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isNotFound())
@@ -299,7 +324,8 @@ public class VenueControllerTest {
 		doNothing().when(venueService).deleteVenueById(anyLong());
 
 		mockMvc.perform(
-				delete("/api/v1/venues/" + venueId)
+				delete("/api/v1/venues/{id}", venueId)
+						.with(user(adminUser))
 		).andExpect(status().isNoContent());
 
 		verify(venueService).deleteVenueById(anyLong());
@@ -307,10 +333,11 @@ public class VenueControllerTest {
 
 	@Test
 	public void deleteVenueById_should_return400BadRequest_whenIdIsInvalid() throws Exception {
-		String uriTemplate = "/api/v1/venues/" + -1;
+		String uriTemplate = "/api/v1/venues/-1";
 
 		mockMvc.perform(
 				       delete(uriTemplate)
+						       .with(user(adminUser))
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.statusCode").value(400))
 		       .andExpect(jsonPath("$.path").value(uriTemplate));
@@ -327,6 +354,7 @@ public class VenueControllerTest {
 
 		mockMvc.perform(
 				       delete(uriTemplate)
+						       .with(user(adminUser))
 		       ).andExpect(status().isNotFound())
 		       .andExpect(jsonPath("$.statusCode").value(404))
 		       .andExpect(jsonPath("$.path").value(uriTemplate));
@@ -341,6 +369,7 @@ public class VenueControllerTest {
 
 		mockMvc.perform(
 				       delete(uriTemplate)
+						       .with(user(adminUser))
 		       ).andExpect(status().isConflict())
 		       .andExpect(jsonPath("$.statusCode").value(409))
 		       .andExpect(jsonPath("$.path").value(uriTemplate));

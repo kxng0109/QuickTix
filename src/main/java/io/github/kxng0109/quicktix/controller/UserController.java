@@ -3,23 +3,24 @@ package io.github.kxng0109.quicktix.controller;
 import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
 import io.github.kxng0109.quicktix.dto.response.BookingResponse;
 import io.github.kxng0109.quicktix.dto.response.UserResponse;
+import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.service.BookingService;
 import io.github.kxng0109.quicktix.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,66 +36,13 @@ public class UserController {
 	private final BookingService bookingService;
 
 	@Operation(
-			summary = "Create a new user",
-			description = "Registers a new user in the system. Email must be unique across all users."
-	)
-	@ApiResponses(value = {
-			@ApiResponse(
-					responseCode = "201",
-					description = "User created successfully",
-					content = @Content(
-							mediaType = "application/json",
-							schema = @Schema(implementation = UserResponse.class)
-					)
-			),
-			@ApiResponse(
-					responseCode = "400",
-					description = "Invalid request data - validation failed",
-					content = @Content(
-							mediaType = "application/json",
-							examples = @ExampleObject(
-									value = """
-											{
-											    "firstName": "First name can't be blank",
-											    "email": "Email can't be blank"
-											}
-											"""
-							)
-					)
-			),
-			@ApiResponse(
-					responseCode = "409",
-					description = "User with this email already exists",
-					content = @Content(
-							mediaType = "application/json",
-							examples = @ExampleObject(
-									value = """
-											{
-											    "statusCode": 409,
-											    "message": "User with email already exists",
-											    "path": "/api/v1/users",
-											    "timestamp": "2026-01-28T12:00:00Z"
-											}
-											"""
-							)
-					)
-			)
-	})
-	@PostMapping
-	public ResponseEntity<UserResponse> createUser(
-			@Valid @RequestBody CreateUserRequest request
-	) {
-		return new ResponseEntity<>(userService.createUser(request), HttpStatus.CREATED);
-	}
-
-	@Operation(
-			summary = "Get user by ID",
-			description = "Retrieves a user's details by their unique identifier"
+			summary = "Get user by ID (ADMIN ONLY)",
+			description = "Retrieves a user's details by their unique identifier. Accessible only to administrators."
 	)
 	@ApiResponses(value = {
 			@ApiResponse(
 					responseCode = "200",
-					description = "User found",
+					description = "User retrieved successfully",
 					content = @Content(schema = @Schema(implementation = UserResponse.class))
 			),
 			@ApiResponse(
@@ -103,11 +51,22 @@ public class UserController {
 					content = @Content
 			),
 			@ApiResponse(
+					responseCode = "401",
+					description = "Authentication required",
+					content = @Content
+			),
+			@ApiResponse(
+					responseCode = "403",
+					description = "Access denied - ADMIN role required",
+					content = @Content
+			),
+			@ApiResponse(
 					responseCode = "404",
 					description = "User not found",
 					content = @Content
 			)
 	})
+	@PreAuthorize("hasRole('ADMIN')")
 	@GetMapping("/{id}")
 	public ResponseEntity<UserResponse> getUserById(
 			@PathVariable @Min(value = 1, message = "User ID must be greater than 0") long id
@@ -116,70 +75,121 @@ public class UserController {
 	}
 
 	@Operation(
-			summary = "Get user's bookings",
-			description = "Retrieves all bookings made by a specific user with pagination support"
+			summary = "Get bookings for a user",
+			description = "Retrieves bookings for the specified user ID with pagination. " +
+					"ADMIN can access any user's bookings. USER can access only their own bookings."
 	)
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "200", description = "Bookings retrieved successfully"),
 			@ApiResponse(responseCode = "400", description = "Invalid user ID", content = @Content),
+			@ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
+			@ApiResponse(responseCode = "403", description = "Access denied", content = @Content),
 			@ApiResponse(responseCode = "404", description = "User not found", content = @Content)
 	})
+	@PreAuthorize("hasAnyRole('ADMIN', 'USER')")
 	@GetMapping("/{userId}/bookings")
 	public ResponseEntity<Page<BookingResponse>> getBookingsByUser(
 			@Min(value = 1, message = "User ID must have a value of at least 1") @PathVariable long userId,
-			Pageable pageable
+			Pageable pageable,
+			@AuthenticationPrincipal User currentUser
 	) {
 		return ResponseEntity.ok(bookingService.getBookingsByUser(
 				userId,
-				pageable
+				pageable,
+				currentUser
 		));
 	}
 
 	@Operation(
-			summary = "Get user by email",
-			description = "Retrieves a user's details by their email address"
+			summary = "Get current authenticated user profile",
+			description = "Retrieves the profile details of the currently authenticated user."
 	)
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "User found"),
-			@ApiResponse(responseCode = "400", description = "Invalid email format", content = @Content),
+			@ApiResponse(
+					responseCode = "200",
+					description = "Current user retrieved successfully",
+					content = @Content(schema = @Schema(implementation = UserResponse.class))
+			),
+			@ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
 			@ApiResponse(responseCode = "404", description = "User not found", content = @Content)
 	})
-	@GetMapping("/email/{email}")
-	public ResponseEntity<UserResponse> getUserByEmail(@PathVariable @Email(message = "Enter a valid email address") String email) {
-		return ResponseEntity.ok(userService.getUserByEmail(email));
+	@PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+	@GetMapping("/me")
+	public ResponseEntity<UserResponse> getUser(
+			@AuthenticationPrincipal User currentUser
+	) {
+		return ResponseEntity.ok(userService.getUser(currentUser));
 	}
 
 	@Operation(
-			summary = "Update user",
-			description = "Updates an existing user's details. If changing email, the new email must be unique."
+			summary = "Update current authenticated user profile",
+			description = "Updates the profile details of the currently authenticated user. " +
+					"If email is changed, the new email must be unique."
 	)
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "User updated successfully"),
+			@ApiResponse(
+					responseCode = "200",
+					description = "User profile updated successfully",
+					content = @Content(schema = @Schema(implementation = UserResponse.class))
+			),
 			@ApiResponse(responseCode = "400", description = "Invalid request data", content = @Content),
+			@ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
 			@ApiResponse(responseCode = "404", description = "User not found", content = @Content),
 			@ApiResponse(responseCode = "409", description = "Email already in use by another user", content = @Content)
 	})
-	@PutMapping("/{id}")
-	public ResponseEntity<UserResponse> updateUserById(
-			@PathVariable @Min(value = 1, message = "User ID must at least 1") long id,
-			@Valid @RequestBody CreateUserRequest request
+	@PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+	@PutMapping("/me")
+	public ResponseEntity<UserResponse> updateUser(
+			@Valid @RequestBody CreateUserRequest request,
+			@AuthenticationPrincipal User currentUser
 	) {
-		return new ResponseEntity<>(userService.updateUserById(id, request), HttpStatus.OK);
+		return new ResponseEntity<>(userService.updateUser(request, currentUser), HttpStatus.OK);
 	}
 
 	@Operation(
-			summary = "Delete user by email",
-			description = "Permanently deletes a user from the system. Users with existing bookings cannot be deleted - they should be deactivated instead."
+			summary = "Update user by ID (ADMIN ONLY)",
+			description = "Updates an existing user's details by ID. Accessible only to administrators. " +
+					"If email is changed, the new email must be unique."
+	)
+	@ApiResponses(value = {
+			@ApiResponse(
+					responseCode = "200",
+					description = "User updated successfully",
+					content = @Content(schema = @Schema(implementation = UserResponse.class))
+			),
+			@ApiResponse(responseCode = "400", description = "Invalid request data or user ID", content = @Content),
+			@ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
+			@ApiResponse(responseCode = "403", description = "Access denied - ADMIN role required", content = @Content),
+			@ApiResponse(responseCode = "404", description = "User not found", content = @Content),
+			@ApiResponse(responseCode = "409", description = "Email already in use by another user", content = @Content)
+	})
+	@PreAuthorize("hasRole('ADMIN')")
+	@PutMapping("/{id}")
+	public ResponseEntity<UserResponse> updateUserById(
+			@PathVariable @Min(value = 1, message = "User ID must at least 1") long id,
+			@Valid @RequestBody CreateUserRequest request,
+			@AuthenticationPrincipal User currentUser
+	) {
+		return new ResponseEntity<>(userService.updateUserById(id, request, currentUser), HttpStatus.OK);
+	}
+
+	@Operation(
+			summary = "Delete current authenticated user",
+			description = "Permanently deletes the currently authenticated user. " +
+					"Users with existing bookings cannot be deleted and should be deactivated instead."
 	)
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "204", description = "User deleted successfully"),
-			@ApiResponse(responseCode = "400", description = "Invalid email format", content = @Content),
+			@ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
 			@ApiResponse(responseCode = "404", description = "User not found", content = @Content),
 			@ApiResponse(responseCode = "409", description = "User has existing bookings and cannot be deleted", content = @Content)
 	})
-	@DeleteMapping("/email/{email}")
-	public ResponseEntity<Void> deleteUserByEmail(@PathVariable @Email(message = "Enter a valid email address") String email) {
-		userService.deleteUserByEmail(email);
+	@PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+	@DeleteMapping("/me")
+	public ResponseEntity<Void> deleteUser(
+			@AuthenticationPrincipal User currentUser
+	) {
+		userService.deleteUser(currentUser);
 
 		return ResponseEntity.noContent().build();
 	}

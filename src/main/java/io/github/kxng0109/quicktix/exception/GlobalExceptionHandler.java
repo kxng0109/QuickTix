@@ -8,6 +8,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -134,8 +135,17 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleNoResourceFoundException(
 			NoResourceFoundException ex,
 			HttpServletRequest request
-	){
+	) {
 		HttpStatus status = HttpStatus.NOT_FOUND;
+		return buildErrorResponse(ex, request, status);
+	}
+
+	@ExceptionHandler(BadCredentialsException.class)
+	public ResponseEntity<ErrorResponse> handleBadCredentialsException(
+			BadCredentialsException ex,
+			HttpServletRequest request
+	) {
+		HttpStatus status = HttpStatus.UNAUTHORIZED;
 		return buildErrorResponse(ex, request, status);
 	}
 
@@ -145,12 +155,16 @@ public class GlobalExceptionHandler {
 			HttpServletRequest request,
 			HttpStatus status
 	) {
+		String message = ex.getMessage();
+		//Why let the user know which one was invalid? Just return a generic message
+		if (ex instanceof BadCredentialsException) message = "Invalid email or password";
+
 		ErrorResponse response = ErrorResponse
 				.builder()
 				.timestamp(OffsetDateTime.now())
 				.statusCode(status.value())
 				.error(status.getReasonPhrase())
-				.message(ex.getMessage())
+				.message(message)
 				.path(request.getRequestURI())
 				.build();
 

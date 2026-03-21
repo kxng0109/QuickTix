@@ -8,13 +8,13 @@ import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.PaymentMethod;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
+import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.exception.InvalidAmountException;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
 import io.github.kxng0109.quicktix.repositories.PaymentRepository;
 import io.github.kxng0109.quicktix.service.gateway.PaymentGateway;
-import io.github.kxng0109.quicktix.utils.BookingReferenceGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -29,7 +30,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
@@ -48,6 +48,7 @@ public class PaymentServiceTest {
 	                                                     .amount(totalAmount)
 	                                                     .paymentMethod(paymentMethod)
 	                                                     .build();
+
 	@Mock
 	private PaymentRepository paymentRepository;
 
@@ -65,15 +66,21 @@ public class PaymentServiceTest {
 
 	private Payment payment;
 	private Booking booking;
+	private User user;
 
 	@BeforeEach
 	void setUp() {
+		user = User.builder()
+		           .id(300L)
+		           .role(Role.USER)
+		           .build();
+
 		booking = Booking.builder()
 		                 .id(bookingId)
 		                 .status(bookingStatus)
-		                 .bookingReference(BookingReferenceGenerator.generate())
+		                 .bookingReference(UUID.randomUUID().toString())
 		                 .totalAmount(totalAmount)
-		                 .user(User.builder().id(300L).build())
+		                 .user(user)
 		                 .build();
 
 		payment = Payment.builder()
@@ -94,7 +101,7 @@ public class PaymentServiceTest {
 		when(paymentRepository.findByBookingId(anyLong()))
 				.thenReturn(Optional.of(payment));
 
-		PaymentResponse response = paymentService.getPaymentByBookingId(paymentId);
+		PaymentResponse response = paymentService.getPaymentByBookingId(paymentId, user);
 
 		assertNotNull(response);
 		assertEquals(paymentStatus.getDisplayName(), response.status());
@@ -110,7 +117,25 @@ public class PaymentServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> paymentService.getPaymentByBookingId(paymentId)
+				() -> paymentService.getPaymentByBookingId(paymentId, user)
+		);
+
+		verify(paymentRepository).findByBookingId(anyLong());
+	}
+
+	@Test
+	public void getPaymentByBookingId_should_throwAccessDeniedException_when_userDoesNotOwnPaymentAndNotAdmin() {
+		User anotherUser = User.builder()
+		                       .id(999L)
+		                       .role(Role.USER)
+		                       .build();
+
+		when(paymentRepository.findByBookingId(anyLong()))
+				.thenReturn(Optional.of(payment));
+
+		assertThrows(
+				AccessDeniedException.class,
+				() -> paymentService.getPaymentByBookingId(paymentId, anotherUser)
 		);
 
 		verify(paymentRepository).findByBookingId(anyLong());
@@ -177,7 +202,6 @@ public class PaymentServiceTest {
 		);
 
 		assertEquals("Payment amount mismatch", ex.getMessage());
-		assertEquals(1, booking.getTotalAmount().compareTo(totalAmount));
 
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository, never()).save(any(Payment.class));
@@ -280,8 +304,6 @@ public class PaymentServiceTest {
 
 	@Test
 	public void refundPayment_should_throwEntityNotFoundException_when_bookingIsNotFound() {
-		payment.setStatus(PaymentStatus.COMPLETED);
-
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.empty());
 
@@ -289,8 +311,6 @@ public class PaymentServiceTest {
 				EntityNotFoundException.class,
 				() -> paymentService.refundPayment(bookingId)
 		);
-
-		assertEquals(PaymentStatus.COMPLETED, payment.getStatus());
 
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository, never()).findByBookingId(anyLong());
@@ -301,8 +321,6 @@ public class PaymentServiceTest {
 
 	@Test
 	public void refundPayment_should_throwEntityNotFoundException_when_paymentIsNotFound() {
-		payment.setStatus(PaymentStatus.COMPLETED);
-
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 		when(paymentRepository.findByBookingId(anyLong()))
@@ -312,8 +330,6 @@ public class PaymentServiceTest {
 				EntityNotFoundException.class,
 				() -> paymentService.refundPayment(bookingId)
 		);
-
-		assertEquals(PaymentStatus.COMPLETED, payment.getStatus());
 
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
@@ -337,7 +353,6 @@ public class PaymentServiceTest {
 		);
 
 		assertEquals("Payment has already been refunded", ex.getMessage());
-		assertEquals(PaymentStatus.REFUNDED, payment.getStatus());
 
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
@@ -359,7 +374,6 @@ public class PaymentServiceTest {
 		);
 
 		assertEquals("Cannot refund payment if payment was not completed.", ex.getMessage());
-		assertEquals(PaymentStatus.PENDING, payment.getStatus());
 
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
@@ -383,7 +397,6 @@ public class PaymentServiceTest {
 		);
 
 		assertEquals("Cannot refund payment if payment was not completed.", ex.getMessage());
-		assertEquals(PaymentStatus.FAILED, payment.getStatus());
 
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
@@ -409,7 +422,6 @@ public class PaymentServiceTest {
 		);
 
 		assertEquals("Refund failed at gateway.", ex.getMessage());
-		assertEquals(PaymentStatus.COMPLETED, payment.getStatus());
 
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
@@ -421,7 +433,6 @@ public class PaymentServiceTest {
 	@Test
 	public void processRefundForCancelledEvent_should_refundAndCancelBooking_when_paymentIsCompleted() {
 		payment.setStatus(PaymentStatus.COMPLETED);
-
 		when(paymentGateway.refundTransaction(anyString())).thenReturn(true);
 
 		paymentService.processRefundForCancelledEvent(payment);

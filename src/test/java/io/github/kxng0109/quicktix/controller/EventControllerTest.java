@@ -1,12 +1,17 @@
 package io.github.kxng0109.quicktix.controller;
 
-import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
 import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
+import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.EventStatus;
+import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
+import io.github.kxng0109.quicktix.service.CustomUserDetailsService;
 import io.github.kxng0109.quicktix.service.EventService;
+import io.github.kxng0109.quicktix.service.JwtService;
 import io.github.kxng0109.quicktix.service.SeatService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +24,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -27,7 +31,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,8 +49,7 @@ public class EventControllerTest {
 	@Autowired
 	private MockMvc mockMvc;
 
-	@Autowired
-	private ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
 	@MockitoBean
 	private EventService eventService;
@@ -52,8 +57,15 @@ public class EventControllerTest {
 	@MockitoBean
 	private SeatService seatService;
 
+	@MockitoBean
+	private JwtService jwtService;
+
+	@MockitoBean
+	private CustomUserDetailsService userDetailsService;
+
 	private CreateEventRequest request;
 	private EventResponse response;
+	private User adminUser;
 
 	@BeforeEach
 	public void setup() {
@@ -78,6 +90,13 @@ public class EventControllerTest {
 		                        .eventStartDateTime(request.eventStartDateTime())
 		                        .eventEndDateTime(request.eventEndDateTime())
 		                        .build();
+
+		adminUser = User.builder()
+		                .id(1L)
+		                .email("admin@quicktix.com")
+		                .role(Role.ADMIN)
+		                .passwordHash("hashed")
+		                .build();
 	}
 
 	@Test
@@ -87,6 +106,7 @@ public class EventControllerTest {
 
 		mockMvc.perform(
 				       post("/api/v1/events")
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isCreated())
@@ -102,6 +122,7 @@ public class EventControllerTest {
 
 		mockMvc.perform(
 				       post(uriTemplate)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
@@ -123,6 +144,7 @@ public class EventControllerTest {
 
 		mockMvc.perform(
 				       post(uriTemplate)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isNotFound())
@@ -137,6 +159,7 @@ public class EventControllerTest {
 
 		mockMvc.perform(
 				       get("/api/v1/events/{id}", eventId)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 		       ).andExpect(status().isOk())
 		       .andExpect(jsonPath("$.id").value(eventId))
@@ -149,6 +172,7 @@ public class EventControllerTest {
 	public void getEventById_should_return400BadRequest_whenIdIsInvalid() throws Exception {
 		mockMvc.perform(
 				       get("/api/v1/events/{id}", -1L)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.statusCode").value(400))
@@ -164,6 +188,7 @@ public class EventControllerTest {
 
 		mockMvc.perform(
 				       get("/api/v1/events/{id}", eventId)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 		       ).andExpect(status().isNotFound())
 		       .andExpect(jsonPath("$.statusCode").value(404))
@@ -477,6 +502,7 @@ public class EventControllerTest {
 
 		mockMvc.perform(
 				       put("/api/v1/events/{id}", eventId)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isOk())
@@ -489,6 +515,7 @@ public class EventControllerTest {
 	public void updateEventById_should_return400BadRequest_whenRequestIsInvalid() throws Exception {
 		mockMvc.perform(
 				       put("/api/v1/events/{id}", eventId)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
@@ -504,11 +531,12 @@ public class EventControllerTest {
 	public void updateEventById_should_return400BadRequest_whenIdIsInvalid() throws Exception {
 		mockMvc.perform(
 				       put("/api/v1/events/{id}", -1)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.statusCode").value(400))
-		       .andExpect(jsonPath("$.path").value("/api/v1/events/" + "-1"));
+		       .andExpect(jsonPath("$.path").value("/api/v1/events/-1"));
 
 		verify(eventService, never()).updateEventById(anyLong(), any(CreateEventRequest.class));
 	}
@@ -519,12 +547,13 @@ public class EventControllerTest {
 				.when(eventService).updateEventById(anyLong(), any(CreateEventRequest.class));
 
 		mockMvc.perform(
-				       put("/api/v1/events/", eventId)
+				       put("/api/v1/events/{id}", eventId)
+						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isNotFound())
 		       .andExpect(jsonPath("$.statusCode").value(404))
-		       .andExpect(jsonPath("$.path").value("/api/v1/events/"));
+		       .andExpect(jsonPath("$.path").value("/api/v1/events/" + eventId));
 	}
 
 	private SeatResponse seatResponse() {

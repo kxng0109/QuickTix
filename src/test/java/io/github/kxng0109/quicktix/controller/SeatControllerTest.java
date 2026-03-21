@@ -1,8 +1,13 @@
 package io.github.kxng0109.quicktix.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kxng0109.quicktix.dto.request.HoldSeatsRequest;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
+import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
+import io.github.kxng0109.quicktix.service.CustomUserDetailsService;
+import io.github.kxng0109.quicktix.service.JwtService;
 import io.github.kxng0109.quicktix.service.SeatService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,12 +17,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -33,14 +38,20 @@ public class SeatControllerTest {
 	@Autowired
 	private MockMvc mockMvc;
 
-	@Autowired
-	private ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@MockitoBean
 	private SeatService seatService;
 
+	@MockitoBean
+	private JwtService jwtService;
+
+	@MockitoBean
+	private CustomUserDetailsService userDetailsService;
+
 	private HoldSeatsRequest request;
 	private SeatResponse response;
+	private User currentUser;
 
 	@BeforeEach
 	public void setup() {
@@ -56,6 +67,13 @@ public class SeatControllerTest {
 		                       .rowName("E")
 		                       .status(SeatStatus.AVAILABLE.getDisplayName())
 		                       .build();
+
+		currentUser = User.builder()
+		                  .id(1L)
+		                  .email("user@quicktix.com")
+		                  .role(Role.ADMIN)
+		                  .passwordHash("hashed")
+		                  .build();
 	}
 
 	@Test
@@ -65,6 +83,7 @@ public class SeatControllerTest {
 
 		mockMvc.perform(
 				       post("/api/v1/seats/hold")
+						       .with(user(currentUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isCreated())
@@ -76,6 +95,7 @@ public class SeatControllerTest {
 	public void holdSeats_should_return400BadRequest_whenRequestIsInvalid() throws Exception {
 		mockMvc.perform(
 				       post("/api/v1/seats/hold")
+						       .with(user(currentUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
@@ -86,12 +106,13 @@ public class SeatControllerTest {
 	}
 
 	@Test
-	public void holdSeats_should_return400BadRequest_whenSeatAreNotAvailable() throws Exception {
+	public void holdSeats_should_return400BadRequest_whenSeatsAreNotAvailable() throws Exception {
 		doThrow(IllegalArgumentException.class)
 				.when(seatService).holdSeats(any(HoldSeatsRequest.class));
 
 		mockMvc.perform(
 				       post("/api/v1/seats/hold")
+						       .with(user(currentUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isBadRequest())
@@ -106,6 +127,7 @@ public class SeatControllerTest {
 
 		mockMvc.perform(
 				       post("/api/v1/seats/hold")
+						       .with(user(currentUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isNotFound())
@@ -117,6 +139,7 @@ public class SeatControllerTest {
 	public void releaseSeats_should_return204NoContent_whenRequestIsValid() throws Exception {
 		mockMvc.perform(
 				post("/api/v1/seats/release")
+						.with(user(currentUser))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		).andExpect(status().isNoContent());
@@ -128,6 +151,7 @@ public class SeatControllerTest {
 	public void releaseSeats_should_return400BadRequest_whenRequestIsInvalid() throws Exception {
 		mockMvc.perform(
 				       post("/api/v1/seats/release")
+						       .with(user(currentUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
@@ -138,12 +162,13 @@ public class SeatControllerTest {
 	}
 
 	@Test
-	public void releaseSeats_should_return400BadRequest_whenSeatAreNotAvailable() throws Exception {
+	public void releaseSeats_should_return400BadRequest_whenUserDoesNotHoldSeats() throws Exception {
 		doThrow(IllegalArgumentException.class)
 				.when(seatService).releaseSeats(any(HoldSeatsRequest.class));
 
 		mockMvc.perform(
 				       post("/api/v1/seats/release")
+						       .with(user(currentUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isBadRequest())
@@ -158,6 +183,7 @@ public class SeatControllerTest {
 
 		mockMvc.perform(
 				       post("/api/v1/seats/release")
+						       .with(user(currentUser))
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isNotFound())

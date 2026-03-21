@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,6 +45,7 @@ public class VenueController {
 					content = @Content
 			)
 	})
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping
 	public ResponseEntity<VenueResponse> createVenue(@Valid @RequestBody CreateVenueRequest request) {
 		return new ResponseEntity<>(venueService.createVenue(request), HttpStatus.CREATED);
@@ -109,6 +111,7 @@ public class VenueController {
 			@ApiResponse(responseCode = "400", description = "Invalid request data", content = @Content),
 			@ApiResponse(responseCode = "404", description = "Venue not found", content = @Content)
 	})
+	@PreAuthorize("hasRole('ADMIN')")
 	@PutMapping("/{id}")
 	public ResponseEntity<VenueResponse> updateVenueById(
 			@Min(value = 1, message = "Venue ID must at least 1") @PathVariable long id,
@@ -127,6 +130,7 @@ public class VenueController {
 			@ApiResponse(responseCode = "404", description = "Venue not found", content = @Content),
 			@ApiResponse(responseCode = "409", description = "Venue has associated events and cannot be deleted", content = @Content)
 	})
+	@PreAuthorize("hasRole('ADMIN')")
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> deleteVenueById(
 			@Min(value = 1, message = "Venue ID must be at least 1") @PathVariable long id

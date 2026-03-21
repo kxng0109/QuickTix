@@ -4,6 +4,7 @@ import io.github.kxng0109.quicktix.dto.request.PaymentRequest;
 import io.github.kxng0109.quicktix.dto.response.PaymentResponse;
 import io.github.kxng0109.quicktix.entity.Booking;
 import io.github.kxng0109.quicktix.entity.Payment;
+import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import io.github.kxng0109.quicktix.exception.InvalidAmountException;
@@ -12,6 +13,7 @@ import io.github.kxng0109.quicktix.exception.PaymentFailedException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
 import io.github.kxng0109.quicktix.repositories.PaymentRepository;
 import io.github.kxng0109.quicktix.service.gateway.PaymentGateway;
+import io.github.kxng0109.quicktix.utils.AssertOwnershipOrAdmin;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,11 +36,13 @@ public class PaymentService {
 	private final PaymentGateway paymentGateway;
 
 	@Transactional(readOnly = true)
-	public PaymentResponse getPaymentByBookingId(Long bookingId) {
+	public PaymentResponse getPaymentByBookingId(Long bookingId, User currentUser) {
 		Payment payment = paymentRepository.findByBookingId(bookingId)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Payment not found")
 		                                   );
+
+		AssertOwnershipOrAdmin.check(currentUser, payment.getBooking().getUser());
 
 		return buildPaymentResponse(payment);
 	}

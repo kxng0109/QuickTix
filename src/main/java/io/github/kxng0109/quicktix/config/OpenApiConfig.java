@@ -56,6 +56,7 @@ public class OpenApiConfig {
 								.description("Local development server")
 				))
 				.tags(List.of(
+						new Tag().name("Authentication").description("User registration and login"),
 						new Tag().name("Users").description("User registration and management"),
 						new Tag().name("Venues").description("Venue creation and management"),
 						new Tag().name("Events").description("Event creation, scheduling, and management"),

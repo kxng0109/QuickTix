@@ -40,6 +40,16 @@ public record CreateUserRequest(
 		String email,
 
 		@Schema(
+				description = "User's password. Must be at least 8 characters.",
+				example = "SecureP@ss123",
+				requiredMode = Schema.RequiredMode.REQUIRED,
+				minLength = 8
+		)
+		@NotBlank(message = "Password can't be blank")
+		@Size(min = 8, message = "Password must be at least 8 characters")
+		String password,
+
+		@Schema(
 				description = "User's phone number in international format",
 				example = "+2341234567890",
 				requiredMode = Schema.RequiredMode.NOT_REQUIRED,

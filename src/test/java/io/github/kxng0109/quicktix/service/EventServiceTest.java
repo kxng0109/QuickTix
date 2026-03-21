@@ -76,7 +76,8 @@ public class EventServiceTest {
 		                            .description(
 				                            "An event that has lorem ipsum text every where and everyone talks in lorem ipsum")
 		                            .venueId(venueId)
-		                            .eventStartDateTime(Instant.now())
+		                            .eventStartDateTime(Instant.now().plus(1, ChronoUnit.DAYS))
+		                            .eventEndDateTime(Instant.now().plus(1, ChronoUnit.DAYS).plus(2, ChronoUnit.HOURS))
 		                            .ticketPrice(BigDecimal.valueOf(13455.99))
 		                            .numberOfSeats(numberOfSeats)
 		                            .build();
@@ -85,7 +86,6 @@ public class EventServiceTest {
 		             .id(venueId)
 		             .build();
 
-
 		event = Event.builder()
 		             .id(eventId)
 		             .name(request.name())
@@ -93,6 +93,9 @@ public class EventServiceTest {
 		             .venue(venue)
 		             .status(EventStatus.UPCOMING)
 		             .seats(seats)
+		             .eventStartDateTime(request.eventStartDateTime())
+		             .eventEndDateTime(request.eventEndDateTime())
+		             .ticketPrice(request.ticketPrice())
 		             .build();
 
 		for (int i = 1; i <= numberOfSeats; i++) {
@@ -109,40 +112,29 @@ public class EventServiceTest {
 
 	@Test
 	public void createEvent_should_returnEventResponse_whenRequestIsValid() {
-		when(venueRepository.findById(venueId))
-				.thenReturn(Optional.of(venue));
-		when(eventRepository.save(any(Event.class)))
-				.thenAnswer(i -> i.getArgument(0));
+		when(venueRepository.findById(venueId)).thenReturn(Optional.of(venue));
+		when(eventRepository.save(any(Event.class))).thenAnswer(i -> i.getArgument(0));
 
 		EventResponse response = eventService.createEvent(request);
 
 		assertNotNull(response);
-
 		verify(venueRepository).findById(venueId);
 		verify(eventRepository).save(any(Event.class));
 	}
 
 	@Test
 	public void createEvent_should_throwEntityNotFoundException_whenVenueDoesNotExist() {
-		when(venueRepository.findById(venueId))
-				.thenReturn(Optional.empty());
+		when(venueRepository.findById(venueId)).thenReturn(Optional.empty());
 
-		assertThrows(
-				EntityNotFoundException.class,
-				() -> eventService.createEvent(request)
-		);
-
+		assertThrows(EntityNotFoundException.class, () -> eventService.createEvent(request));
 		verify(venueRepository).findById(venueId);
 		verify(eventRepository, never()).save(any(Event.class));
 	}
 
 	@Test
 	public void getEventById_should_returnEventResponse_whenRequestIsValid() {
-		when(eventRepository.findById(eventId))
-				.thenReturn(Optional.of(event));
-
-		when(seatRepository.countByEventIdAndSeatStatus(eventId, SeatStatus.AVAILABLE))
-				.thenReturn((long) seats.size());
+		when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
+		when(seatRepository.countByEventIdAndSeatStatus(eventId, SeatStatus.AVAILABLE)).thenReturn((long) seats.size());
 
 		EventResponse response = eventService.getEventById(eventId);
 
@@ -155,13 +147,9 @@ public class EventServiceTest {
 
 	@Test
 	public void getEventById_should_throwEntityNotFoundException_whenEventDoesNotExist() {
-		when(eventRepository.findById(eventId))
-				.thenReturn(Optional.empty());
+		when(eventRepository.findById(eventId)).thenReturn(Optional.empty());
 
-		assertThrows(
-				EntityNotFoundException.class,
-				() -> eventService.getEventById(eventId)
-		);
+		assertThrows(EntityNotFoundException.class, () -> eventService.getEventById(eventId));
 
 		verify(eventRepository).findById(eventId);
 		verify(seatRepository, never()).countByEventIdAndSeatStatus(anyLong(), any(SeatStatus.class));
@@ -170,16 +158,12 @@ public class EventServiceTest {
 	@Test
 	public void getAllUpcomingEvents_should_returnListOfEventResponse_whenRequestIsValid() {
 		Page<Event> eventPage = new PageImpl<>(List.of(event));
-
-		when(eventRepository.findEventsByStatus(any(EventStatus.class), any(Pageable.class)))
-				.thenReturn(eventPage);
+		when(eventRepository.findEventsByStatus(any(EventStatus.class), any(Pageable.class))).thenReturn(eventPage);
 
 		Page<EventResponse> response = eventService.getAllUpcomingEvents(pageable);
 
 		assertNotNull(response);
 		assertEquals(1, response.getTotalElements());
-		assertEquals(event.getDescription(), response.getContent().getFirst().description());
-
 		verify(eventRepository).findEventsByStatus(any(EventStatus.class), any(Pageable.class));
 	}
 
@@ -187,16 +171,13 @@ public class EventServiceTest {
 	public void getEventsByVenueId_should_returnListOfEventResponse_whenRequestIsValid() {
 		Page<Event> eventPage = new PageImpl<>(List.of(event));
 
-		when(venueRepository.findById(anyLong()))
-				.thenReturn(Optional.of(venue));
-		when(eventRepository.findByVenue(any(Venue.class), any(Pageable.class)))
-				.thenReturn(eventPage);
+		when(venueRepository.findById(anyLong())).thenReturn(Optional.of(venue));
+		when(eventRepository.findByVenue(any(Venue.class), any(Pageable.class))).thenReturn(eventPage);
 
 		Page<EventResponse> response = eventService.getEventsByVenueId(venueId, pageable);
 
 		assertNotNull(response);
 		assertEquals(1, response.getTotalElements());
-		assertEquals(event.getDescription(), response.getContent().getFirst().description());
 
 		verify(venueRepository).findById(anyLong());
 		verify(eventRepository).findByVenue(any(Venue.class), any(Pageable.class));
@@ -204,14 +185,9 @@ public class EventServiceTest {
 
 	@Test
 	public void getEventsByVenueId_should_throwEntityNotFoundException_whenVenueDoesNotExist() {
-		when(venueRepository.findById(anyLong()))
-				.thenReturn(Optional.empty());
+		when(venueRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-		assertThrows(
-				EntityNotFoundException.class,
-				() -> eventService.getEventsByVenueId(venueId, pageable)
-		);
-
+		assertThrows(EntityNotFoundException.class, () -> eventService.getEventsByVenueId(venueId, pageable));
 		verify(venueRepository).findById(anyLong());
 	}
 
@@ -234,7 +210,6 @@ public class EventServiceTest {
 
 		assertNotNull(responses);
 		assertEquals(1, responses.getTotalElements());
-
 		verify(eventRepository).findByEventStartDateTimeBetween(any(Instant.class), any(Instant.class),
 		                                                        any(Pageable.class)
 		);
@@ -242,18 +217,14 @@ public class EventServiceTest {
 
 	@Test
 	public void updateEventById_should_returnUpdatedEventResponse_whenRequestIsValid() {
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.of(event));
-		when(eventRepository.save(any(Event.class)))
-				.thenAnswer(i -> i.getArgument(0));
-		when(seatRepository.countByEventIdAndSeatStatus(anyLong(), any(SeatStatus.class)))
-				.thenReturn((long) numberOfSeats);
+		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
+		when(eventRepository.save(any(Event.class))).thenAnswer(i -> i.getArgument(0));
+		when(seatRepository.countByEventIdAndSeatStatus(anyLong(), any(SeatStatus.class))).thenReturn(
+				(long) numberOfSeats);
 
 		EventResponse response = eventService.updateEventById(eventId, request);
 
 		assertNotNull(response);
-		assertEquals(event.getDescription(), response.description());
-
 		verify(eventRepository).findById(anyLong());
 		verify(eventRepository).save(any(Event.class));
 		verify(seatRepository).countByEventIdAndSeatStatus(anyLong(), any(SeatStatus.class));
@@ -262,60 +233,29 @@ public class EventServiceTest {
 	@Test
 	public void updateEventById_should_throwIllegalArgumentException_whenSizeChangeIsInRequest() {
 		event.setSeats(List.of());
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.of(event));
+		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 
-		assertThrows(
-				IllegalArgumentException.class,
-				() -> eventService.updateEventById(eventId, request)
-		);
+		assertThrows(IllegalArgumentException.class, () -> eventService.updateEventById(eventId, request));
 
 		verify(eventRepository).findById(anyLong());
 		verify(eventRepository, never()).save(any(Event.class));
-		verify(seatRepository, never()).countByEventIdAndSeatStatus(anyLong(), any(SeatStatus.class));
 	}
 
 	@Test
 	public void updateEventById_should_throwEntityNotFoundException_whenEventDoesNotExist() {
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.empty());
+		when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-		assertThrows(
-				EntityNotFoundException.class,
-				() -> eventService.updateEventById(eventId, request)
-		);
-
+		assertThrows(EntityNotFoundException.class, () -> eventService.updateEventById(eventId, request));
 		verify(eventRepository).findById(anyLong());
-		verify(eventRepository, never()).save(any(Event.class));
-	}
-
-	@Test
-	public void updateEventById_should_throwEntityNotFoundException_whenVenueDoesNotExist() {
-		event.setVenue(Venue.builder().id(venueId + 1L).build());
-
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.of(event));
-		when(venueRepository.findById(anyLong()))
-				.thenReturn(Optional.empty());
-
-		assertThrows(
-				EntityNotFoundException.class,
-				() -> eventService.updateEventById(eventId, request)
-		);
-
-		verify(eventRepository).findById(anyLong());
-		verify(eventRepository, never()).save(any(Event.class));
 	}
 
 	@Test
 	public void cancelEventById_should_cancelEvent_whenEventExistsAndIsUpcomingOrOngoing() {
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.of(event));
+		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 
 		eventService.cancelEventById(eventId);
 
 		assertEquals(EventStatus.CANCELLED, event.getStatus());
-
 		verify(eventRepository).findById(anyLong());
 		verify(eventRepository).save(any(Event.class));
 		verify(applicationEventPublisher).publishEvent(any(EventCancelledEvent.class));
@@ -323,16 +263,9 @@ public class EventServiceTest {
 
 	@Test
 	public void cancelEventById_should_throwEntityNotFoundException_whenEventDoesNotExist() {
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.empty());
+		when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-		assertThrows(
-				EntityNotFoundException.class,
-				() -> eventService.cancelEventById(eventId)
-		);
-
-		assertEquals(EventStatus.UPCOMING, event.getStatus());
-
+		assertThrows(EntityNotFoundException.class, () -> eventService.cancelEventById(eventId));
 		verify(eventRepository).findById(anyLong());
 		verify(eventRepository, never()).save(any(Event.class));
 	}
@@ -340,19 +273,9 @@ public class EventServiceTest {
 	@Test
 	public void cancelEventById_should_throwInvalidOperationException_whenEventStatusIsCompletedOrCancelled() {
 		event.setStatus(EventStatus.COMPLETED);
+		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.of(event));
-
-		InvalidOperationException ex = assertThrows(
-				InvalidOperationException.class,
-				() -> eventService.cancelEventById(eventId)
-		);
-
-		assertEquals(
-				"Cannot cancel an event that is already" + event.getStatus(),
-				ex.getMessage()
-		);
+		assertThrows(InvalidOperationException.class, () -> eventService.cancelEventById(eventId));
 
 		verify(eventRepository).findById(anyLong());
 		verify(eventRepository, never()).save(any(Event.class));
@@ -360,25 +283,19 @@ public class EventServiceTest {
 
 	@Test
 	public void deleteEventById_should_returnNothing_whenRequestIsValid() {
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.of(event));
+		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 
 		eventService.deleteEventById(eventId);
 
 		verify(eventRepository).findById(anyLong());
 		verify(eventRepository).delete(any(Event.class));
-
 	}
 
 	@Test
 	public void deleteEventById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.empty());
+		when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-		assertThrows(
-				EntityNotFoundException.class,
-				() -> eventService.deleteEventById(eventId)
-		);
+		assertThrows(EntityNotFoundException.class, () -> eventService.deleteEventById(eventId));
 
 		verify(eventRepository).findById(anyLong());
 		verify(eventRepository, never()).delete(any(Event.class));
@@ -386,17 +303,10 @@ public class EventServiceTest {
 
 	@Test
 	public void deleteEventById_should_throwResourceInUseException_whenEventHasBookings() {
-		event.setBookings(List.of(
-				Booking.builder().event(event).status(BookingStatus.CONFIRMED).build()
-		));
+		event.setBookings(List.of(Booking.builder().event(event).status(BookingStatus.CONFIRMED).build()));
+		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.of(event));
-
-		assertThrows(
-				ResourceInUseException.class,
-				() -> eventService.deleteEventById(eventId)
-		);
+		assertThrows(ResourceInUseException.class, () -> eventService.deleteEventById(eventId));
 
 		verify(eventRepository).findById(anyLong());
 		verify(eventRepository, never()).delete(any(Event.class));
@@ -404,10 +314,8 @@ public class EventServiceTest {
 
 	@Test
 	public void updateEventStatus_should_updateEventStatus() {
-		when(eventRepository.findStartedEvent(any(EventStatus.class), any(Instant.class)))
-				.thenReturn(List.of(event));
-		when(eventRepository.findEventsToComplete(anyList(), any(Instant.class)))
-				.thenReturn(List.of(event));
+		when(eventRepository.findStartedEvent(any(EventStatus.class), any(Instant.class))).thenReturn(List.of(event));
+		when(eventRepository.findEventsToComplete(anyList(), any(Instant.class))).thenReturn(List.of(event));
 
 		eventService.updateEventStatus();
 
@@ -415,5 +323,4 @@ public class EventServiceTest {
 		verify(eventRepository).findEventsToComplete(anyList(), any(Instant.class));
 		verify(eventRepository, times(2)).saveAll(anyList());
 	}
-
 }

@@ -3,6 +3,7 @@ package io.github.kxng0109.quicktix.controller;
 import io.github.kxng0109.quicktix.dto.request.InitiateBookingRequest;
 import io.github.kxng0109.quicktix.dto.response.BookingResponse;
 import io.github.kxng0109.quicktix.dto.response.PaymentResponse;
+import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.service.BookingService;
 import io.github.kxng0109.quicktix.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +19,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -63,12 +66,14 @@ public class BookingController {
 			),
 			@ApiResponse(responseCode = "404", description = "User or event not found", content = @Content)
 	})
+	@PreAuthorize("hasAnyRole('USER', 'ADMIN')")
 	@PostMapping
 	public ResponseEntity<BookingResponse> createBooking(
-			@Valid @RequestBody InitiateBookingRequest request
+			@Valid @RequestBody InitiateBookingRequest request,
+			@AuthenticationPrincipal User currentUser
 	) {
 		return new ResponseEntity<>(
-				bookingService.createPendingBooking(request),
+				bookingService.createPendingBooking(request, currentUser),
 				HttpStatus.CREATED
 		);
 	}
@@ -86,11 +91,13 @@ public class BookingController {
 			@ApiResponse(responseCode = "400", description = "Invalid booking ID", content = @Content),
 			@ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
 	})
+	@PreAuthorize("hasAnyRole('USER', 'ADMIN')")
 	@GetMapping("/{id}")
 	public ResponseEntity<BookingResponse> getBookingById(
-			@Min(value = 1, message = "Booking ID must be 1 or greater") @PathVariable long id
+			@Min(value = 1, message = "Booking ID must be 1 or greater") @PathVariable long id,
+			@AuthenticationPrincipal User currentUser
 	) {
-		return ResponseEntity.ok(bookingService.getBookingById(id));
+		return ResponseEntity.ok(bookingService.getBookingById(id, currentUser));
 	}
 
 	@Operation(
@@ -102,11 +109,13 @@ public class BookingController {
 			@ApiResponse(responseCode = "400", description = "Invalid booking reference", content = @Content),
 			@ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
 	})
+	@PreAuthorize("hasAnyRole('USER', 'ADMIN')")
 	@GetMapping("/reference/{reference}")
 	public ResponseEntity<BookingResponse> getBookingByReference(
-			@NotBlank(message = "Transaction reference is required") @PathVariable String reference
+			@NotBlank(message = "Transaction reference is required") @PathVariable String reference,
+			@AuthenticationPrincipal User currentUser
 	) {
-		return ResponseEntity.ok(bookingService.getBookingByReference(reference));
+		return ResponseEntity.ok(bookingService.getBookingByReference(reference, currentUser));
 	}
 
 	@Operation(
@@ -122,11 +131,13 @@ public class BookingController {
 			@ApiResponse(responseCode = "400", description = "Invalid booking ID", content = @Content),
 			@ApiResponse(responseCode = "404", description = "Booking or payment not found", content = @Content)
 	})
+	@PreAuthorize("hasAnyRole('USER', 'ADMIN')")
 	@GetMapping("/{id}/payment")
 	public ResponseEntity<PaymentResponse> getPaymentByBookingId(
-			@Min(value = 1, message = "ID must be 1 or greater") @PathVariable long id
+			@Min(value = 1, message = "ID must be 1 or greater") @PathVariable long id,
+			@AuthenticationPrincipal User currentUser
 	) {
-		return ResponseEntity.ok(paymentService.getPaymentByBookingId(id));
+		return ResponseEntity.ok(paymentService.getPaymentByBookingId(id, currentUser));
 	}
 
 	@Operation(
@@ -149,11 +160,13 @@ public class BookingController {
 			@ApiResponse(responseCode = "400", description = "Booking cannot be cancelled - not in PENDING status", content = @Content),
 			@ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
 	})
+	@PreAuthorize("hasAnyRole('USER', 'ADMIN')")
 	@PatchMapping("/{id}/cancel")
 	public ResponseEntity<Void> cancelBookingById(
-			@Min(value = 1, message = "ID must be 1 or greater") @PathVariable long id
+			@Min(value = 1, message = "ID must be 1 or greater") @PathVariable long id,
+			@AuthenticationPrincipal User currentUser
 	) {
-		bookingService.cancelBooking(id);
+		bookingService.cancelBooking(id, currentUser);
 		return ResponseEntity.noContent().build();
 	}
 
@@ -193,6 +206,7 @@ public class BookingController {
 			),
 			@ApiResponse(responseCode = "404", description = "Booking or payment not found", content = @Content)
 	})
+	@PreAuthorize("hasRole('ADMIN')")
 	@PatchMapping("/{id}/refund")
 	public ResponseEntity<Void> refundPayment(
 			@Min(value = 1, message = "ID must be 1 or greater") @PathVariable long id

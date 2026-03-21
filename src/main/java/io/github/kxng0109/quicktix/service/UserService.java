@@ -3,11 +3,14 @@ package io.github.kxng0109.quicktix.service;
 import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
 import io.github.kxng0109.quicktix.dto.response.UserResponse;
 import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.exception.UserExistsException;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
+import io.github.kxng0109.quicktix.utils.AssertOwnershipOrAdmin;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,101 +18,90 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserRepository userRepository;
+	private final UserRepository userRepository;
+	private final PasswordEncoder passwordEncoder;
 
-    @Transactional
-    public UserResponse createUser(CreateUserRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw new UserExistsException();
-        }
+	@Transactional(readOnly = true)
+	public UserResponse getUserById(long id) {
+		User user = userRepository.findById(id)
+		                          .orElseThrow(
+				                          () -> new EntityNotFoundException("User not found with id: " + id)
+		                          );
 
-        String phoneNumber = request.phoneNumber() != null ? request.phoneNumber() : null;
+		return buildUserResponse(user);
+	}
 
-        User user = User.builder()
-                        .firstName(request.firstName())
-                        .lastName(request.lastName())
-                        .email(request.email())
-                        .phoneNumber(phoneNumber)
-                        .build();
+	@Transactional(readOnly = true)
+	public UserResponse getUser(User currentUser) {
+		return buildUserResponse(currentUser);
+	}
 
-        User savedUser = userRepository.save(user);
-        return buildUserResponse(savedUser);
-    }
+	@Transactional
+	public UserResponse updateUser(CreateUserRequest request, User currentUser){
+		return updateUserById(currentUser.getId(), request, currentUser);
+	}
 
-    @Transactional(readOnly = true)
-    public UserResponse getUserById(long id) {
-        User user = userRepository.findById(id)
-                                  .orElseThrow(
-                                          () -> new EntityNotFoundException("User not found with id: " + id)
-                                  );
+	@Transactional
+	public UserResponse updateUserById(Long userId, CreateUserRequest request, User currentUser) {
+		User user = getUserEntityById(userId);
 
-        return buildUserResponse(user);
-    }
+		AssertOwnershipOrAdmin.check(currentUser, user);
 
-    @Transactional(readOnly = true)
-    public UserResponse getUserByEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                                  .orElseThrow(
-                                          () -> new EntityNotFoundException("User not found with email: " + email)
-                                  );
+		user.setFirstName(request.firstName());
+		user.setLastName(request.lastName());
+		if (!user.getEmail().equalsIgnoreCase(request.email())) {
+			if (userRepository.existsByEmail(request.email())) {
+				throw new UserExistsException();
+			}
 
-        return buildUserResponse(user);
-    }
+			user.setEmail(request.email());
+		}
 
-    @Transactional
-    public UserResponse updateUserById(Long userId, CreateUserRequest request) {
-        User user = getUserEntityById(userId);
+		if (request.password() != null && !request.password().isBlank()) {
+			user.setPasswordHash(passwordEncoder.encode(request.password()));
+		}
 
-        user.setFirstName(request.firstName());
-        user.setLastName(request.lastName());
-        if (!user.getEmail().equalsIgnoreCase(request.email())) {
-            if (userRepository.existsByEmail(request.email())) {
-                throw new UserExistsException();
-            }
+		String phoneNumber = request.phoneNumber() != null ? request.phoneNumber() : null;
+		user.setPhoneNumber(phoneNumber);
 
-            user.setEmail(request.email());
-        }
-        String phoneNumber = request.phoneNumber() != null ? request.phoneNumber() : null;
-        user.setPhoneNumber(phoneNumber);
+		User savedUser = userRepository.save(user);
 
-        User savedUser = userRepository.save(user);
+		return buildUserResponse(savedUser);
+	}
 
-        return buildUserResponse(savedUser);
-    }
+	@Transactional
+	public void deleteUser(User currentUser) {
+		User user = userRepository.findByEmail(currentUser.getEmail())
+		                          .orElseThrow(
+				                          () -> new EntityNotFoundException("User not found with email: " + currentUser.getEmail())
+		                          );
 
-    @Transactional
-    public void deleteUserByEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                                  .orElseThrow(
-                                          () -> new EntityNotFoundException("User not found with email: " + email)
-                                  );
+		// Don't delete users with bookings
+		boolean hasBookings = user.getBookings() != null && !user.getBookings().isEmpty();
+		if (hasBookings) {
+			throw new ResourceInUseException(
+					"Cannot delete user with existing bookings. Deactivate the account instead.");
+		}
 
-        // Don't delete users with bookings
-        boolean hasBookings = user.getBookings() != null && !user.getBookings().isEmpty();
-        if (hasBookings) {
-            throw new ResourceInUseException(
-                    "Cannot delete user with existing bookings. Deactivate the account instead.");
-        }
-
-        userRepository.delete(user);
-    }
+		userRepository.delete(user);
+	}
 
 
-    @Transactional(readOnly = true)
-    User getUserEntityById(long userId) {
-        return userRepository.findById(userId)
-                             .orElseThrow(
-                                     () -> new EntityNotFoundException("User not found with id: " + userId)
-                             );
-    }
+	@Transactional(readOnly = true)
+	User getUserEntityById(long userId) {
+		return userRepository.findById(userId)
+		                     .orElseThrow(
+				                     () -> new EntityNotFoundException("User not found with id: " + userId)
+		                     );
+	}
 
-    private UserResponse buildUserResponse(User user) {
-        return UserResponse.builder()
-                           .id(user.getId())
-                           .firstName(user.getFirstName())
-                           .lastName(user.getLastName())
-                           .email(user.getEmail())
-                           .phoneNumber(user.getPhoneNumber())
-                           .build();
-    }
+	private UserResponse buildUserResponse(User user) {
+		return UserResponse.builder()
+		                   .id(user.getId())
+		                   .firstName(user.getFirstName())
+		                   .lastName(user.getLastName())
+		                   .email(user.getEmail())
+		                   .phoneNumber(user.getPhoneNumber())
+		                   .build();
+	}
 }

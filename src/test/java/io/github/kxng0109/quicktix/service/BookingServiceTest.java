@@ -4,10 +4,7 @@ import io.github.kxng0109.quicktix.dto.request.InitiateBookingRequest;
 import io.github.kxng0109.quicktix.dto.response.BookingResponse;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.entity.*;
-import io.github.kxng0109.quicktix.enums.BookingStatus;
-import io.github.kxng0109.quicktix.enums.EventStatus;
-import io.github.kxng0109.quicktix.enums.PaymentStatus;
-import io.github.kxng0109.quicktix.enums.SeatStatus;
+import io.github.kxng0109.quicktix.enums.*;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
@@ -16,7 +13,6 @@ import io.github.kxng0109.quicktix.repositories.UserRepository;
 import io.github.kxng0109.quicktix.utils.BookingReferenceGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -34,7 +31,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -79,6 +76,7 @@ public class BookingServiceTest {
 		           .firstName("John")
 		           .lastName("Michael")
 		           .email("john@michael.com")
+		           .role(Role.USER)
 		           .build();
 
 		Long eventId = 300L;
@@ -149,7 +147,7 @@ public class BookingServiceTest {
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 
-		BookingResponse response = bookingService.getBookingById(bookingId);
+		BookingResponse response = bookingService.getBookingById(bookingId, user);
 
 		assertNotNull(response);
 		assertEquals(bookingId, response.id());
@@ -160,28 +158,38 @@ public class BookingServiceTest {
 	}
 
 	@Test
+	void getBookingById_should_throwAccessDenied_when_nonOwnerNonAdmin() {
+		User owner = User.builder().id(1L).role(Role.USER).build();
+		User attacker = User.builder().id(2L).role(Role.USER).build();
+		Booking booking = Booking.builder().id(10L).user(owner).build();
+
+		when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+
+		assertThrows(AccessDeniedException.class, () -> bookingService.getBookingById(10L, attacker));
+	}
+
+	@Test
 	public void getBookingById_should_throwEntityNotFoundException_when_bookingIsNotFound() {
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.empty());
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.getBookingById(bookingId)
+				() -> bookingService.getBookingById(bookingId, user)
 		);
 
 		verify(bookingRepository).findById(anyLong());
 	}
 
-	//TODO: Enable this when spring security is integrated
-	@Disabled("Spring security logic needs to be integrated for this.")
 	@Test
-	public void getBookingById_should_throwEntityNotFoundException_when_userDoesNotOwnBooking() {
+	public void getBookingById_should_throwAccessDeniedException_when_userDoesNotOwnBooking() {
+		User anotherUser = User.builder().id(999L).role(Role.USER).build();
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 
 		assertThrows(
-				EntityNotFoundException.class,
-				() -> bookingService.getBookingById(bookingId)
+				AccessDeniedException.class,
+				() -> bookingService.getBookingById(bookingId, anotherUser)
 		);
 
 		verify(bookingRepository).findById(anyLong());
@@ -192,7 +200,7 @@ public class BookingServiceTest {
 		when(bookingRepository.findByBookingReference(anyString()))
 				.thenReturn(Optional.of(booking));
 
-		BookingResponse response = bookingService.getBookingByReference(bookingReference);
+		BookingResponse response = bookingService.getBookingByReference(bookingReference, user);
 
 		assertNotNull(response);
 		assertEquals(bookingId, response.id());
@@ -202,8 +210,6 @@ public class BookingServiceTest {
 		verify(bookingRepository).findByBookingReference(anyString());
 	}
 
-	//TODO: Enable this when spring security is integrated
-	@Disabled("Spring security logic needs to be integrated for this.")
 	@Test
 	public void getBookingByReference_should_throwEntityNotFoundException_when_bookingIsNotFound() {
 		when(bookingRepository.findByBookingReference(anyString()))
@@ -211,22 +217,21 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.getBookingByReference(bookingReference)
+				() -> bookingService.getBookingByReference(bookingReference, user)
 		);
 
 		verify(bookingRepository).findByBookingReference(anyString());
 	}
 
-	//TODO: Enable this when spring security is integrated
-	@Disabled("Spring security logic needs to be integrated for this.")
 	@Test
-	public void getBookingByReference_should_throwEntityNotFoundException_when_userDoesNotOwnBooking() {
+	public void getBookingByReference_should_throwAccessDeniedException_when_userDoesNotOwnBooking() {
+		User anotherUser = User.builder().id(999L).role(Role.USER).build();
 		when(bookingRepository.findByBookingReference(anyString()))
 				.thenReturn(Optional.of(booking));
 
 		assertThrows(
-				EntityNotFoundException.class,
-				() -> bookingService.getBookingByReference(bookingReference)
+				AccessDeniedException.class,
+				() -> bookingService.getBookingByReference(bookingReference, anotherUser)
 		);
 
 		verify(bookingRepository).findByBookingReference(anyString());
@@ -241,7 +246,7 @@ public class BookingServiceTest {
 		when(bookingRepository.findByUserId(anyLong(), any(Pageable.class)))
 				.thenReturn(bookingPage);
 
-		Page<BookingResponse> responses = bookingService.getBookingsByUser(userId, pageable);
+		Page<BookingResponse> responses = bookingService.getBookingsByUser(userId, pageable, user);
 
 		assertNotNull(responses);
 		assertEquals(bookingPage.getTotalElements(), responses.getTotalElements());
@@ -258,7 +263,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.getBookingsByUser(userId, pageable)
+				() -> bookingService.getBookingsByUser(userId, pageable, user)
 		);
 
 		verify(userRepository).findById(anyLong());
@@ -276,7 +281,7 @@ public class BookingServiceTest {
 		when(bookingRepository.save(any(Booking.class)))
 				.thenReturn(booking);
 
-		BookingResponse response = bookingService.createPendingBooking(bookingRequest);
+		BookingResponse response = bookingService.createPendingBooking(bookingRequest, user);
 
 		assertNotNull(response);
 		assertEquals(
@@ -305,7 +310,7 @@ public class BookingServiceTest {
 		when(bookingRepository.save(any(Booking.class)))
 				.thenReturn(booking);
 
-		BookingResponse response = bookingService.createPendingBooking(bookingRequest);
+		BookingResponse response = bookingService.createPendingBooking(bookingRequest, user);
 
 		assertNotNull(response);
 		assertEquals(List.of(), response.seats());
@@ -325,7 +330,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.createPendingBooking(bookingRequest)
+				() -> bookingService.createPendingBooking(bookingRequest, user)
 		);
 
 		verify(eventRepository).findById(anyLong());
@@ -344,7 +349,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.createPendingBooking(bookingRequest)
+				() -> bookingService.createPendingBooking(bookingRequest, user)
 		);
 
 		verify(eventRepository).findById(anyLong());
@@ -365,7 +370,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.createPendingBooking(bookingRequest)
+				() -> bookingService.createPendingBooking(bookingRequest, user)
 		);
 
 		verify(eventRepository).findById(anyLong());
@@ -384,7 +389,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				IllegalArgumentException.class,
-				() -> bookingService.createPendingBooking(bookingRequest)
+				() -> bookingService.createPendingBooking(bookingRequest, user)
 		);
 
 		verify(eventRepository).findById(anyLong());
@@ -403,7 +408,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				IllegalStateException.class,
-				() -> bookingService.createPendingBooking(bookingRequest)
+				() -> bookingService.createPendingBooking(bookingRequest, user)
 		);
 
 		verify(eventRepository).findById(anyLong());
@@ -427,7 +432,6 @@ public class BookingServiceTest {
 		verify(bookingRepository).findByIdWithPayment(anyLong());
 		verify(bookingRepository).save(any(Booking.class));
 		verify(seatRepository).saveAll(anyList());
-
 	}
 
 	@Test
@@ -440,9 +444,7 @@ public class BookingServiceTest {
 		bookingService.confirmBooking(bookingId);
 
 		assertEquals(BookingStatus.CONFIRMED, booking.getStatus());
-		assertEquals(SeatStatus.HELD,
-		             booking.getSeats().getFirst().getSeatStatus()
-		); //Intentional to show that it didn't get to the logic under it
+		assertEquals(SeatStatus.HELD, booking.getSeats().getFirst().getSeatStatus());
 
 		verify(bookingRepository).findByIdWithPayment(anyLong());
 		verify(seatRepository, never()).saveAll(anyList());
@@ -495,10 +497,7 @@ public class BookingServiceTest {
 				() -> bookingService.confirmBooking(bookingId)
 		);
 
-		assertEquals(
-				"Cannot confirm a booking. Payment is missing or not completed",
-				ex.getMessage()
-		);
+		assertEquals("Cannot confirm a booking. Payment is missing or not completed", ex.getMessage());
 		assertEquals(BookingStatus.PENDING, booking.getStatus());
 
 		verify(bookingRepository).findByIdWithPayment(anyLong());
@@ -511,7 +510,7 @@ public class BookingServiceTest {
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 
-		bookingService.cancelBooking(bookingId);
+		bookingService.cancelBooking(bookingId, user);
 
 		assertEquals(BookingStatus.CANCELLED, booking.getStatus());
 		assertEquals(SeatStatus.AVAILABLE, booking.getSeats().getFirst().getSeatStatus());
@@ -530,7 +529,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				InvalidOperationException.class,
-				() -> bookingService.cancelBooking(bookingId)
+				() -> bookingService.cancelBooking(bookingId, user)
 		);
 
 		assertEquals(BookingStatus.CONFIRMED, booking.getStatus());
@@ -548,7 +547,7 @@ public class BookingServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> bookingService.cancelBooking(bookingId)
+				() -> bookingService.cancelBooking(bookingId, user)
 		);
 
 		verify(bookingRepository).findById(anyLong());
@@ -556,16 +555,15 @@ public class BookingServiceTest {
 		verify(bookingRepository, never()).save(any(Booking.class));
 	}
 
-	//TODO: Enable this when spring security is integrated
-	@Disabled("Spring security logic needs to be integrated for this.")
 	@Test
-	public void cancelBooking_should_throwEntityNotFoundException_when_userDoesNotOwnBooking() {
+	public void cancelBooking_should_throwAccessDeniedException_when_userDoesNotOwnBooking() {
+		User anotherUser = User.builder().id(999L).role(Role.USER).build();
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 
 		assertThrows(
-				EntityNotFoundException.class,
-				() -> bookingService.cancelBooking(bookingId)
+				AccessDeniedException.class,
+				() -> bookingService.cancelBooking(bookingId, anotherUser)
 		);
 
 		verify(bookingRepository).findById(anyLong());
@@ -643,7 +641,6 @@ public class BookingServiceTest {
 		verify(bookingRepository).findById(bookingId);
 		verify(bookingRepository, never()).save(any(Booking.class));
 	}
-
 
 	private SeatResponse createSeatResponse(Seat seat) {
 		return SeatResponse.builder()

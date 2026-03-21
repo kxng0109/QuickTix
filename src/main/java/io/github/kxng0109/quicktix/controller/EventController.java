@@ -19,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,6 +54,7 @@ public class EventController {
 			@ApiResponse(responseCode = "404", description = "Venue not found", content = @Content)
 	})
 	@PostMapping
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<EventResponse> createEvent(
 			@Valid @RequestBody CreateEventRequest request
 	) {
@@ -73,6 +75,7 @@ public class EventController {
 			@ApiResponse(responseCode = "404", description = "Event not found", content = @Content)
 	})
 	@GetMapping("/{id}")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<EventResponse> getEventById(
 			@Min(value = 1, message = "Event ID must have a value of at least 1") @PathVariable long id
 	) {
@@ -175,6 +178,7 @@ public class EventController {
 			@ApiResponse(responseCode = "404", description = "Event or venue not found", content = @Content)
 	})
 	@PutMapping("/{id}")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<EventResponse> updateEventById(
 			@Min(value = 1, message = "Event ID must have a value of at least 1") @PathVariable long id,
 			@Valid @RequestBody CreateEventRequest request

@@ -29,183 +29,183 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class VenueServiceTest {
 
-    private final long venueId = 100L;
-    private final String city = "a city sha";
-    private final Pageable pageable = PageRequest.of(0, 10);
+	private final long venueId = 100L;
+	private final String city = "a city sha";
+	private final Pageable pageable = PageRequest.of(0, 10);
 
-    @Mock
-    private VenueRepository venueRepository;
+	@Mock
+	private VenueRepository venueRepository;
 
-    @InjectMocks
-    private VenueService venueService;
+	@InjectMocks
+	private VenueService venueService;
 
-    private CreateVenueRequest request;
-    private Venue venue;
+	private CreateVenueRequest request;
+	private Venue venue;
 
-    @BeforeEach
-    public void setup() {
-        request = CreateVenueRequest.builder()
-                                    .name("something stadium")
-                                    .address("5, a place, a city, a coutry")
-                                    .city(city)
-                                    .totalCapacity(1000000)
-                                    .build();
+	@BeforeEach
+	public void setup() {
+		request = CreateVenueRequest.builder()
+		                            .name("something stadium")
+		                            .address("5, a place, a city, a coutry")
+		                            .city(city)
+		                            .totalCapacity(1000000)
+		                            .build();
 
-        venue = Venue.builder()
-                     .id(venueId)
-                     .name(request.name())
-                     .address(request.address())
-                     .city(request.city())
-                     .totalCapacity(request.totalCapacity())
-                     .createdAt(Instant.now())
-                     .updatedAt(Instant.now())
-                     .build();
-    }
+		venue = Venue.builder()
+		             .id(venueId)
+		             .name(request.name())
+		             .address(request.address())
+		             .city(request.city())
+		             .totalCapacity(request.totalCapacity())
+		             .createdAt(Instant.now())
+		             .updatedAt(Instant.now())
+		             .build();
+	}
 
-    @Test
-    public void createVenue_should_returnVenueResponse_whenRequestIsValid() {
-        when(venueRepository.save(any(Venue.class)))
-                .thenAnswer(i -> i.getArgument(0));
+	@Test
+	public void createVenue_should_returnVenueResponse_whenRequestIsValid() {
+		when(venueRepository.save(any(Venue.class)))
+				.thenAnswer(i -> i.getArgument(0));
 
-        VenueResponse response = venueService.createVenue(request);
+		VenueResponse response = venueService.createVenue(request);
 
-        assertNotNull(response);
-        assertEquals(venue.getName(), response.name());
-        assertEquals(venue.getCity(), response.city());
+		assertNotNull(response);
+		assertEquals(venue.getName(), response.name());
+		assertEquals(venue.getCity(), response.city());
 
-        verify(venueRepository).save(any(Venue.class));
-    }
+		verify(venueRepository).save(any(Venue.class));
+	}
 
-    @Test
-    public void getVenueById_should_returnVenueResponse_whenIdExists() {
-        when(venueRepository.findById(venueId))
-                .thenReturn(Optional.of(venue));
+	@Test
+	public void getVenueById_should_returnVenueResponse_whenIdExists() {
+		when(venueRepository.findById(venueId))
+				.thenReturn(Optional.of(venue));
 
-        VenueResponse response = venueService.getVenueById(venueId);
+		VenueResponse response = venueService.getVenueById(venueId);
 
-        assertNotNull(response);
-        assertEquals(venue.getName(), response.name());
+		assertNotNull(response);
+		assertEquals(venue.getName(), response.name());
 
-        verify(venueRepository).findById(venueId);
-    }
+		verify(venueRepository).findById(venueId);
+	}
 
-    @Test
-    public void getVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
-        when(venueRepository.findById(venueId))
-                .thenReturn(Optional.empty());
+	@Test
+	public void getVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
+		when(venueRepository.findById(venueId))
+				.thenReturn(Optional.empty());
 
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> venueService.getVenueById(venueId)
-        );
+		assertThrows(
+				EntityNotFoundException.class,
+				() -> venueService.getVenueById(venueId)
+		);
 
-        verify(venueRepository).findById(venueId);
-        verify(venueRepository, never()).save(any(Venue.class));
-    }
+		verify(venueRepository).findById(venueId);
+		verify(venueRepository, never()).save(any(Venue.class));
+	}
 
-    @Test
-    public void getAllVenues_should_returnAListOfVenueResponse() {
-        Page<Venue> venuePage = new PageImpl<>(List.of(venue));
+	@Test
+	public void getAllVenues_should_returnAListOfVenueResponse() {
+		Page<Venue> venuePage = new PageImpl<>(List.of(venue));
 
-        when(venueRepository.findAll(any(Pageable.class)))
-                .thenReturn(venuePage);
+		when(venueRepository.findAll(any(Pageable.class)))
+				.thenReturn(venuePage);
 
-        Page<VenueResponse> response = venueService.getAllVenues(pageable);
+		Page<VenueResponse> response = venueService.getAllVenues(pageable);
 
-        assertNotNull(response);
-        assertEquals(venue.getName(), response.getContent().getFirst().name());
+		assertNotNull(response);
+		assertEquals(venue.getName(), response.getContent().getFirst().name());
 
-        verify(venueRepository).findAll(any(Pageable.class));
-    }
+		verify(venueRepository).findAll(any(Pageable.class));
+	}
 
-    @Test
-    public void getVenuesByCity_should_returnAListOfVenueResponse() {
-        Page<Venue> venuePage = new PageImpl<>(List.of(venue));
+	@Test
+	public void getVenuesByCity_should_returnAListOfVenueResponse() {
+		Page<Venue> venuePage = new PageImpl<>(List.of(venue));
 
-        when(venueRepository.findByCity(city, pageable))
-                .thenReturn(venuePage);
+		when(venueRepository.findByCity(city, pageable))
+				.thenReturn(venuePage);
 
-        Page<VenueResponse> response = venueService.getVenuesByCity(city, pageable);
+		Page<VenueResponse> response = venueService.getVenuesByCity(city, pageable);
 
-        assertNotNull(response);
-        assertEquals(venue.getName(), response.getContent().getFirst().name());
+		assertNotNull(response);
+		assertEquals(venue.getName(), response.getContent().getFirst().name());
 
-        verify(venueRepository).findByCity(city, pageable);
-    }
+		verify(venueRepository).findByCity(city, pageable);
+	}
 
-    @Test
-    public void updateVenueById_should_returnVenueResponse_whenIdExists() {
-        when(venueRepository.findById(venueId))
-                .thenReturn(Optional.of(venue));
-        when(venueRepository.save(any(Venue.class)))
-                .thenAnswer(i -> i.getArgument(0));
+	@Test
+	public void updateVenueById_should_returnVenueResponse_whenIdExists() {
+		when(venueRepository.findById(venueId))
+				.thenReturn(Optional.of(venue));
+		when(venueRepository.save(any(Venue.class)))
+				.thenAnswer(i -> i.getArgument(0));
 
-        VenueResponse response = venueService.updateVenueById(venueId, request);
+		VenueResponse response = venueService.updateVenueById(venueId, request);
 
-        assertNotNull(response);
-        assertEquals(venue.getName(), response.name());
+		assertNotNull(response);
+		assertEquals(venue.getName(), response.name());
 
-        verify(venueRepository).findById(venueId);
-        verify(venueRepository).save(any(Venue.class));
-    }
+		verify(venueRepository).findById(venueId);
+		verify(venueRepository).save(any(Venue.class));
+	}
 
-    @Test
-    public void updateVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
-        when(venueRepository.findById(venueId))
-                .thenReturn(Optional.empty());
+	@Test
+	public void updateVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
+		when(venueRepository.findById(venueId))
+				.thenReturn(Optional.empty());
 
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> venueService.updateVenueById(venueId, request)
-        );
+		assertThrows(
+				EntityNotFoundException.class,
+				() -> venueService.updateVenueById(venueId, request)
+		);
 
-        verify(venueRepository).findById(venueId);
-        verify(venueRepository, never()).save(any(Venue.class));
-    }
+		verify(venueRepository).findById(venueId);
+		verify(venueRepository, never()).save(any(Venue.class));
+	}
 
-    @Test
-    public void deleteVenueById_should_returnNothing_whenIdExists() {
-        when(venueRepository.findById(venueId))
-                .thenReturn(Optional.of(venue));
+	@Test
+	public void deleteVenueById_should_returnNothing_whenIdExists() {
+		when(venueRepository.findById(venueId))
+				.thenReturn(Optional.of(venue));
 
-        venueService.deleteVenueById(venueId);
+		venueService.deleteVenueById(venueId);
 
-        verify(venueRepository).findById(venueId);
-        verify(venueRepository).delete(any(Venue.class));
-    }
+		verify(venueRepository).findById(venueId);
+		verify(venueRepository).delete(any(Venue.class));
+	}
 
-    @Test
-    public void deleteVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
-        when(venueRepository.findById(venueId))
-                .thenReturn(Optional.empty());
+	@Test
+	public void deleteVenueById_should_throwEntityNotFoundException_whenIdDoesNotExist() {
+		when(venueRepository.findById(venueId))
+				.thenReturn(Optional.empty());
 
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> venueService.deleteVenueById(venueId)
-        );
+		assertThrows(
+				EntityNotFoundException.class,
+				() -> venueService.deleteVenueById(venueId)
+		);
 
-        verify(venueRepository).findById(venueId);
-        verify(venueRepository, never()).delete(any(Venue.class));
-    }
+		verify(venueRepository).findById(venueId);
+		verify(venueRepository, never()).delete(any(Venue.class));
+	}
 
-    @Test
-    public void deleteVenueById_should_throwResourceInUseException_whenVenueHasEvents() {
-        Venue venueWithEvents = Venue.builder()
-                                     .id(venueId)
-                                     .events(List.of(new Event()))
-                                     .build();
+	@Test
+	public void deleteVenueById_should_throwResourceInUseException_whenVenueHasEvents() {
+		Venue venueWithEvents = Venue.builder()
+		                             .id(venueId)
+		                             .events(List.of(new Event()))
+		                             .build();
 
-        when(venueRepository.findById(venueId))
-                .thenReturn(Optional.of(venueWithEvents));
+		when(venueRepository.findById(venueId))
+				.thenReturn(Optional.of(venueWithEvents));
 
-        ResourceInUseException ex = assertThrows(
-                ResourceInUseException.class,
-                () -> venueService.deleteVenueById(venueId)
-        );
+		ResourceInUseException ex = assertThrows(
+				ResourceInUseException.class,
+				() -> venueService.deleteVenueById(venueId)
+		);
 
-        assertEquals("Cannot delete venue that has associated events. Delete the events first.", ex.getMessage());
+		assertEquals("Cannot delete venue that has associated events. Delete the events first.", ex.getMessage());
 
-        verify(venueRepository).findById(venueId);
-        verify(venueRepository, never()).delete(any(Venue.class));
-    }
+		verify(venueRepository).findById(venueId);
+		verify(venueRepository, never()).delete(any(Venue.class));
+	}
 }

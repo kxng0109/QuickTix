@@ -4,6 +4,7 @@ import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
 import io.github.kxng0109.quicktix.dto.response.UserResponse;
 import io.github.kxng0109.quicktix.entity.Booking;
 import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.exception.UserExistsException;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
@@ -14,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,237 +27,277 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceTest {
-    private final Long userId = 100L;
-    private final String userEmail = "test@user.test.com";
+	private final Long userId = 100L;
+	private final String userEmail = "test@user.test.com";
 
-    @Mock
-    private UserRepository userRepository;
+	@Mock
+	private UserRepository userRepository;
 
-    @InjectMocks
-    private UserService userService;
+	@Mock
+	private PasswordEncoder passwordEncoder;
 
-    private CreateUserRequest request;
-    private User user;
+	@InjectMocks
+	private UserService userService;
 
-    @BeforeEach
-    public void setUp() {
-        request = CreateUserRequest
-                .builder()
-                .firstName("test")
-                .lastName("user")
-                .email(userEmail)
-                .phoneNumber("+23457849")
-                .build();
+	private CreateUserRequest request;
+	private User user;
 
-        user = User.builder()
-                   .id(userId)
-                   .email(userEmail)
-                   .build();
-    }
+	@BeforeEach
+	public void setUp() {
+		request = CreateUserRequest
+				.builder()
+				.firstName("test")
+				.lastName("user")
+				.email(userEmail)
+				.phoneNumber("+23457849")
+				.password("password123")
+				.build();
 
-    @Test
-    public void createUser_should_returnAUserResponse_whenRequestIsValid() {
-        when(userRepository.existsByEmail(userEmail))
-                .thenReturn(false);
-        when(userRepository.save(any(User.class)))
-                .thenAnswer(i -> i.getArgument(0));
+		user = User.builder()
+		           .id(userId)
+		           .firstName("test")
+		           .lastName("user")
+		           .email(userEmail)
+		           .phoneNumber("+23457849")
+		           .role(Role.USER)
+		           .build();
+	}
 
-        UserResponse response = userService.createUser(request);
+	@Test
+	public void getUserById_should_returnUserResponse_whenIdExists() {
+		when(userRepository.findById(userId))
+				.thenReturn(Optional.ofNullable(user));
 
-        assertNotNull(response);
-        assertEquals(userEmail, response.email());
+		UserResponse result = userService.getUserById(userId);
 
-        verify(userRepository).existsByEmail(userEmail);
-        verify(userRepository).save(any(User.class));
-    }
+		assertNotNull(result);
+		assertEquals(userId, result.id());
 
-    @Test
-    public void createUser_should_throwUserExistsException_whenEmailAlreadyExists() {
-        when(userRepository.existsByEmail(userEmail))
-                .thenReturn(true);
+		verify(userRepository).findById(userId);
+	}
 
-        UserExistsException ex = assertThrows(
-                UserExistsException.class,
-                () -> userService.createUser(request)
-        );
+	@Test
+	public void getUserById_should_throwEntityNotFoundException_whenIdDoesNotExists() {
+		when(userRepository.findById(userId))
+				.thenReturn(Optional.empty());
 
-        assertEquals(new UserExistsException().getMessage(), ex.getMessage());
+		assertThrows(
+				EntityNotFoundException.class,
+				() -> userService.getUserById(userId)
+		);
 
-        verify(userRepository).existsByEmail(userEmail);
-        verify(userRepository, never()).save(any(User.class));
+		verify(userRepository).findById(userId);
+	}
 
+	@Test
+	public void getUser_should_returnUserResponse_whenCurrentUserIsValid() {
+		UserResponse result = userService.getUser(user);
 
-    }
+		assertNotNull(result);
+		assertEquals(userEmail, result.email());
+	}
 
-    @Test
-    public void getUserById_should_returnUserResponse_whenIdExists() {
-        when(userRepository.findById(userId))
-                .thenReturn(
-                        Optional.ofNullable(user)
-                );
+	@Test
+	public void updateUser_should_returnUserResponseWIthUpdatedUserDetails_whenRequestIsValidAndCurrentUserExists() {
+		when(userRepository.findById(userId))
+				.thenReturn(Optional.of(user));
+		when(passwordEncoder.encode(request.password()))
+				.thenReturn("encodedPassword");
+		when(userRepository.save(any(User.class)))
+				.thenAnswer(i -> i.getArgument(0));
 
-        UserResponse result = userService.getUserById(userId);
+		UserResponse response = userService.updateUser(request, user);
 
-        assertNotNull(result);
-        assertEquals(userId, result.id());
+		assertNotNull(response);
+		assertEquals(request.email(), response.email());
+		assertEquals(userId, response.id());
 
-        verify(userRepository).findById(userId);
-    }
+		verify(userRepository).findById(userId);
+		verify(userRepository, never()).existsByEmail(anyString());
+		verify(passwordEncoder).encode(request.password());
+		verify(userRepository).save(any(User.class));
+	}
 
-    @Test
-    public void getUserById_should_throwEntityNotFoundException_whenIdDoesNotExists() {
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.empty());
+	@Test
+	public void updateUserById_should_returnUserResponseWIthUpdatedUserDetails_whenRequestIsValidAndUserByIdExists() {
+		User currentUser = User.builder()
+		                       .id(userId)
+		                       .email(userEmail)
+		                       .role(Role.USER)
+		                       .build();
 
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> userService.getUserById(userId)
-        );
+		when(userRepository.findById(userId))
+				.thenReturn(Optional.of(user));
+		when(passwordEncoder.encode(request.password()))
+				.thenReturn("encodedPassword");
+		when(userRepository.save(any(User.class)))
+				.thenAnswer(i -> i.getArgument(0));
 
-        verify(userRepository).findById(userId);
-    }
+		UserResponse response = userService.updateUserById(userId, request, currentUser);
 
-    @Test
-    public void getUserByEmail_should_returnUserEmail_whenEmailExists() {
-        when(userRepository.findByEmail(userEmail))
-                .thenReturn(
-                        Optional.ofNullable(user)
-                );
+		assertNotNull(response);
+		assertEquals(request.email(), response.email());
+		assertEquals(userId, response.id());
 
-        UserResponse result = userService.getUserByEmail(userEmail);
+		verify(userRepository).findById(userId);
+		verify(userRepository, never()).existsByEmail(anyString());
+		verify(passwordEncoder).encode(request.password());
+		verify(userRepository).save(any(User.class));
+	}
 
-        assertNotNull(result);
-        assertEquals(userEmail, result.email());
+	@Test
+	public void updateUserById_should_throwAccessDeniedException_whenUserTriesToUpdateAnotherUser() {
+		User anotherCurrentUser = User.builder()
+		                              .id(999L)
+		                              .email("another@test.com")
+		                              .role(Role.USER)
+		                              .build();
 
-        verify(userRepository).findByEmail(userEmail);
-    }
+		when(userRepository.findById(userId))
+				.thenReturn(Optional.of(user));
 
-    @Test
-    public void getUserByEmail_should_throwEntityNotFoundException_whenEmailDoesNotExists() {
-        when(userRepository.findByEmail(userEmail))
-                .thenReturn(Optional.empty());
+		assertThrows(
+				AccessDeniedException.class,
+				() -> userService.updateUserById(userId, request, anotherCurrentUser)
+		);
 
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> userService.getUserByEmail(userEmail)
-        );
+		verify(userRepository).findById(userId);
+		verify(userRepository, never()).save(any(User.class));
+	}
 
-        verify(userRepository).findByEmail(userEmail);
-    }
+	@Test
+	public void updateUserById_should_throwEntityNotFoundException_whenUserByIdDoesNotExist() {
+		when(userRepository.findById(userId))
+				.thenReturn(Optional.empty());
 
-    @Test
-    public void updateUserById_should_returnUserResponseWIthUpdatedUserDetails_whenRequestIsValidAndUserByIdExists() {
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class)))
-                .thenAnswer(i -> i.getArgument(0));
+		assertThrows(
+				EntityNotFoundException.class,
+				() -> userService.updateUserById(userId, request, user)
+		);
 
-        UserResponse response = userService.updateUserById(userId, request);
+		verify(userRepository).findById(userId);
+	}
 
-        assertNotNull(response);
-        assertEquals(userEmail, response.email());
-        assertEquals(userId, response.id());
+	@Test
+	public void updateUserById_should_throwUserExistsException_whenNewEmailIsTakenByAnotherUser() {
+		String newTakenEmail = "taken@test.com";
+		CreateUserRequest updateRequest = CreateUserRequest.builder()
+		                                                   .firstName("New")
+		                                                   .lastName("Name")
+		                                                   .email(newTakenEmail)
+		                                                   .password("password123")
+		                                                   .build();
 
-        verify(userRepository).findById(userId);
-        verify(userRepository).save(any(User.class));
-    }
+		User currentUser = User.builder()
+		                       .id(userId)
+		                       .role(Role.USER)
+		                       .build();
 
-    @Test
-    public void updateUserById_should_throwEntityNotFoundException_whenUserByIdDoesNotExist() {
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.empty());
+		when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+		when(userRepository.existsByEmail(newTakenEmail)).thenReturn(true);
 
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> userService.updateUserById(userId, request)
-        );
+		assertThrows(
+				UserExistsException.class,
+				() -> userService.updateUserById(userId, updateRequest, currentUser)
+		);
 
-        verify(userRepository).findById(userId);
-    }
+		verify(userRepository).findById(userId);
+		verify(userRepository).existsByEmail(newTakenEmail);
+		verify(userRepository, never()).save(any(User.class));
+	}
 
-    @Test
-    public void updateUserById_should_throwUserExistsException_whenNewEmailIsTakenByAnotherUser() {
-        String newTakenEmail = "taken@test.com";
-        CreateUserRequest updateRequest = CreateUserRequest.builder()
-                                                           .firstName("New")
-                                                           .lastName("Name")
-                                                           .email(newTakenEmail)
-                                                           .build();
+	@Test
+	public void updateUserById_should_NOT_throwException_whenEmailIsUnchanged() {
+		CreateUserRequest sameEmailRequest = CreateUserRequest.builder()
+		                                                      .firstName("UpdatedName")
+		                                                      .lastName("UpdatedLastName")
+		                                                      .email(userEmail)
+		                                                      .password("password123")
+		                                                      .build();
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(userRepository.existsByEmail(newTakenEmail)).thenReturn(true);
+		User currentUser = User.builder()
+		                       .id(userId)
+		                       .email(userEmail)
+		                       .role(Role.USER)
+		                       .build();
 
-        assertThrows(
-                UserExistsException.class,
-                () -> userService.updateUserById(userId, updateRequest)
-        );
+		when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+		when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
+		when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
-        verify(userRepository).findById(userId);
-        verify(userRepository).existsByEmail(newTakenEmail);
-        verify(userRepository, never()).save(any(User.class));
-    }
+		UserResponse response = userService.updateUserById(userId, sameEmailRequest, currentUser);
 
-    @Test
-    public void updateUserById_should_NOT_throwException_whenEmailIsUnchanged() {
-        CreateUserRequest sameEmailRequest = CreateUserRequest.builder()
-                                                              .firstName("UpdatedName")
-                                                              .email(userEmail)
-                                                              .build();
+		assertNotNull(response);
+		verify(userRepository, never()).existsByEmail(anyString());
+		verify(passwordEncoder).encode("password123");
+		verify(userRepository).save(any(User.class));
+	}
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+	@Test
+	public void deleteUser_should_returnNothing_whenUserExists() {
+		User currentUser = User.builder()
+		                       .id(userId)
+		                       .email(userEmail)
+		                       .build();
 
-        UserResponse response = userService.updateUserById(userId, sameEmailRequest);
+		User existingUser = User.builder()
+		                        .id(userId)
+		                        .email(userEmail)
+		                        .bookings(List.of())
+		                        .build();
 
-        assertNotNull(response);
-        verify(userRepository, never()).existsByEmail(anyString());
-        verify(userRepository).save(any(User.class));
-    }
+		when(userRepository.findByEmail(userEmail))
+				.thenReturn(Optional.of(existingUser));
 
-    @Test
-    public void deleteUserByEmail_should_returnNothing_whenUserExists() {
-        when(userRepository.findByEmail(userEmail))
-                .thenReturn(Optional.ofNullable(user));
+		userService.deleteUser(currentUser);
 
-        userService.deleteUserByEmail(userEmail);
+		verify(userRepository).findByEmail(userEmail);
+		verify(userRepository).delete(existingUser);
+	}
 
-        verify(userRepository).findByEmail(userEmail);
-        verify(userRepository).delete(user);
-    }
+	@Test
+	public void deleteUser_should_throwEntityNotFoundException_whenUserDoesNotExist() {
+		User currentUser = User.builder()
+		                       .id(userId)
+		                       .email(userEmail)
+		                       .build();
 
-    @Test
-    public void deleteUserByEmail_should_throwEntityNotFoundException_whenUserDoesNotExist() {
-        when(userRepository.findByEmail(userEmail))
-                .thenReturn(Optional.empty());
+		when(userRepository.findByEmail(userEmail))
+				.thenReturn(Optional.empty());
 
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> userService.deleteUserByEmail(userEmail)
-        );
+		assertThrows(
+				EntityNotFoundException.class,
+				() -> userService.deleteUser(currentUser)
+		);
 
-        verify(userRepository).findByEmail(userEmail);
-        verify(userRepository, never()).delete(user);
-    }
+		verify(userRepository).findByEmail(userEmail);
+		verify(userRepository, never()).delete(any(User.class));
+	}
 
-    @Test
-    public void deleteUserByEmail_should_throwResourceInUseException_whenUserHasBookings() {
-        User userWithBookings = User.builder()
-                                    .id(userId)
-                                    .email(userEmail)
-                                    .bookings(List.of(new Booking()))
-                                    .build();
+	@Test
+	public void deleteUser_should_throwResourceInUseException_whenUserHasBookings() {
+		User currentUser = User.builder()
+		                       .id(userId)
+		                       .email(userEmail)
+		                       .build();
 
-        when(userRepository.findByEmail(userEmail))
-                .thenReturn(Optional.of(userWithBookings));
+		User userWithBookings = User.builder()
+		                            .id(userId)
+		                            .email(userEmail)
+		                            .bookings(List.of(new Booking()))
+		                            .build();
 
-        ResourceInUseException ex = assertThrows(
-                ResourceInUseException.class,
-                () -> userService.deleteUserByEmail(userEmail)
-        );
+		when(userRepository.findByEmail(userEmail))
+				.thenReturn(Optional.of(userWithBookings));
 
-        assertEquals("Cannot delete user with existing bookings. Deactivate the account instead.", ex.getMessage());
+		ResourceInUseException ex = assertThrows(
+				ResourceInUseException.class,
+				() -> userService.deleteUser(currentUser)
+		);
 
-        verify(userRepository).findByEmail(userEmail);
-        verify(userRepository, never()).delete(any(User.class));
-    }
+		assertEquals("Cannot delete user with existing bookings. Deactivate the account instead.", ex.getMessage());
+
+		verify(userRepository).findByEmail(userEmail);
+		verify(userRepository, never()).delete(any(User.class));
+	}
 }

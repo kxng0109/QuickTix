@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -70,6 +71,7 @@ public class SeatController {
 			),
 			@ApiResponse(responseCode = "404", description = "Event or user not found", content = @Content)
 	})
+	@PreAuthorize("hasAnyRole('ADMIN', 'USER')")
 	@PostMapping("/hold")
 	public ResponseEntity<List<SeatResponse>> holdSeats(
 			@Valid @RequestBody HoldSeatsRequest request
@@ -97,6 +99,7 @@ public class SeatController {
 			),
 			@ApiResponse(responseCode = "404", description = "Event or user not found", content = @Content)
 	})
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping("/release")
 	public ResponseEntity<Void> releaseSeats(
 			@Valid @RequestBody HoldSeatsRequest request

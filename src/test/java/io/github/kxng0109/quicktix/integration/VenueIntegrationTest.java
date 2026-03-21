@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -28,6 +29,7 @@ public class VenueIntegrationTest extends BaseIntegrationTest {
 		                                               .build();
 
 		mockMvc.perform(post("/api/v1/venues")
+				                .with(user("admin@test.com").roles("ADMIN"))
 				                .contentType(MediaType.APPLICATION_JSON)
 				                .content(objectMapper.writeValueAsString(request)))
 		       .andExpect(status().isCreated())
@@ -44,13 +46,12 @@ public class VenueIntegrationTest extends BaseIntegrationTest {
 	@Test
 	void getAllVenues_shouldReturnPagedResults() throws Exception {
 		for (int i = 1; i <= 5; i++) {
-			Venue venue = Venue.builder()
-			                   .name("Venue " + i)
-			                   .address("Address " + i)
-			                   .city("City")
-			                   .totalCapacity(1000 * i)
-			                   .build();
-			venueRepository.save(venue);
+			venueRepository.save(Venue.builder()
+			                          .name("Venue " + i)
+			                          .address("Address " + i)
+			                          .city("City")
+			                          .totalCapacity(1000 * i)
+			                          .build());
 		}
 
 		mockMvc.perform(get("/api/v1/venues")
@@ -65,12 +66,12 @@ public class VenueIntegrationTest extends BaseIntegrationTest {
 
 	@Test
 	void getVenuesByCity_shouldFilterCorrectly() throws Exception {
-		venueRepository.save(Venue.builder()
-		                          .name("Lagos Venue 1").address("Addr").city("Lagos").totalCapacity(1000).build());
-		venueRepository.save(Venue.builder()
-		                          .name("Lagos Venue 2").address("Addr").city("Lagos").totalCapacity(2000).build());
-		venueRepository.save(Venue.builder()
-		                          .name("Abuja Venue").address("Addr").city("Abuja").totalCapacity(3000).build());
+		venueRepository.save(
+				Venue.builder().name("Lagos Venue 1").address("Addr").city("Lagos").totalCapacity(1000).build());
+		venueRepository.save(
+				Venue.builder().name("Lagos Venue 2").address("Addr").city("Lagos").totalCapacity(2000).build());
+		venueRepository.save(
+				Venue.builder().name("Abuja Venue").address("Addr").city("Abuja").totalCapacity(3000).build());
 
 		mockMvc.perform(get("/api/v1/venues/city/{city}", "Lagos"))
 		       .andExpect(status().isOk())

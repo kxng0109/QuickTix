@@ -14,7 +14,6 @@ import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
 import io.github.kxng0109.quicktix.repositories.SeatRepository;
 import io.github.kxng0109.quicktix.repositories.VenueRepository;
-import io.github.kxng0109.quicktix.utils.EnumUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;

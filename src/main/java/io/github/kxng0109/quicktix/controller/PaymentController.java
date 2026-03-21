@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -67,6 +68,7 @@ public class PaymentController {
 			),
 			@ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
 	})
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping("/initialize")
 	public ResponseEntity<PaymentResponse> initializePayment(
 			@Valid @RequestBody PaymentRequest request
@@ -100,6 +102,7 @@ public class PaymentController {
 			@ApiResponse(responseCode = "400", description = "Invalid transaction reference", content = @Content),
 			@ApiResponse(responseCode = "404", description = "Payment not found", content = @Content)
 	})
+	@PreAuthorize("hasRole('ADMIN')")
 	@GetMapping("/verify/{transactionReference}")
 	public ResponseEntity<PaymentResponse> verifyPayment(
 			@NotBlank(message = "Transaction reference is required") @PathVariable String transactionReference

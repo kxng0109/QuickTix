@@ -207,76 +207,45 @@ public class PaymentServiceTest {
 		verify(paymentRepository, never()).save(any(Payment.class));
 	}
 
+
 	@Test
-	public void verifyPayment_should_returnPaymentResponseAndMarkPaymentAsCompleted_when_paymentIsSuccessful() {
-		when(paymentRepository.findByTransactionReference(anyString()))
-				.thenReturn(Optional.of(payment));
-		when(paymentGateway.verifyTransaction(anyString()))
-				.thenReturn(true);
+	public void handleSuccessfulWebhookPayment_should_updateStatusAndConfirmBooking() {
+		payment.setStatus(PaymentStatus.PENDING);
 
-		PaymentResponse response = paymentService.verifyPayment(transferReference);
+		when(paymentRepository.findByBookingId(any())).thenReturn(Optional.of(payment));
 
-		assertNotNull(response);
-		assertEquals(PaymentStatus.COMPLETED.getDisplayName(), response.status());
-		assertEquals(paymentId, response.paymentId());
+		paymentService.handleSuccessfulWebhookPayment(1L, "pi_12345");
 
-		verify(paymentRepository).findByTransactionReference(anyString());
-		verify(paymentGateway).verifyTransaction(anyString());
-		verify(paymentRepository).save(any(Payment.class));
-		verify(bookingService).confirmBooking(anyLong());
+		assertEquals(PaymentStatus.COMPLETED, payment.getStatus());
+		assertEquals("pi_12345", payment.getTransactionReference());
+		assertNotNull(payment.getPaidAt());
+
+		verify(paymentRepository).save(payment);
+		verify(paymentRepository).findByBookingId(any());
+		verify(bookingService).confirmBooking(payment.getBooking().getId());
 	}
 
 	@Test
-	public void verifyPayment_should_returnPaymentResponseAndMarkPaymentAsFailed_when_paymentFails() {
-		when(paymentRepository.findByTransactionReference(anyString()))
-				.thenReturn(Optional.of(payment));
-		when(paymentGateway.verifyTransaction(anyString()))
-				.thenReturn(false);
-
-		PaymentResponse response = paymentService.verifyPayment(transferReference);
-
-		assertNotNull(response);
-		assertEquals(PaymentStatus.FAILED.getDisplayName(), response.status());
-		assertEquals(paymentId, response.paymentId());
-
-		verify(paymentRepository).findByTransactionReference(anyString());
-		verify(paymentGateway).verifyTransaction(anyString());
-		verify(paymentRepository).save(any(Payment.class));
-		verify(bookingService, never()).confirmBooking(anyLong());
-	}
-
-	@Test
-	public void verifyPayment_should_returnPaymentResponse_when_paymentIsAlreadySuccessful() {
+	public void handleSuccessfulWebhookPayment_should_returnEarly_when_alreadyCompleted() {
 		payment.setStatus(PaymentStatus.COMPLETED);
 
-		when(paymentRepository.findByTransactionReference(anyString()))
+		when(paymentRepository.findByBookingId(any()))
 				.thenReturn(Optional.of(payment));
 
-		PaymentResponse response = paymentService.verifyPayment(transferReference);
+		paymentService.handleSuccessfulWebhookPayment(1L, "pi_12345");
 
-		assertNotNull(response);
-		assertEquals(PaymentStatus.COMPLETED.getDisplayName(), response.status());
-		assertEquals(paymentId, response.paymentId());
-
-		verify(paymentRepository).findByTransactionReference(anyString());
-		verify(paymentGateway, never()).verifyTransaction(anyString());
+		verify(paymentRepository).findByBookingId(any());
 		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(bookingService, never()).confirmBooking(anyLong());
 	}
 
 	@Test
-	public void verifyPayment_should_throwEntityNotFoundException_when_paymentIsNotFound() {
-		when(paymentRepository.findByTransactionReference(anyString()))
-				.thenReturn(Optional.empty());
-
+	public void handleSuccessfulWebhookPayment_should_throwEntityNotFoundException_when_paymentDoesNotExist() {
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> paymentService.verifyPayment(transferReference)
+				() -> paymentService.handleSuccessfulWebhookPayment(999L, "pi_12345")
 		);
 
-		verify(paymentRepository).findByTransactionReference(anyString());
-		verify(paymentGateway, never()).verifyTransaction(anyString());
-		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(bookingService, never()).confirmBooking(anyLong());
 	}
 

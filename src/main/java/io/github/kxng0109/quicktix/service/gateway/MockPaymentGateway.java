@@ -1,32 +1,26 @@
 package io.github.kxng0109.quicktix.service.gateway;
 
+import io.github.kxng0109.quicktix.entity.Payment;
+import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
 
 @Service
+@Profile("test")
+@Primary
 public class MockPaymentGateway implements PaymentGateway {
 
     private final Random random = new Random();
 
     /**
-     * Checks if a transaction was successful on the provider's side.
-     * This implementation will pause for 2s to simulate a network delay
-     * then it will either return true for a successful transaction or false
-     * for a failed transaction
-     *
-     * @param transactionReference the unique transfer reference used for getting the status of the transfer
-     *                             from the payment gateway provider
-     * @return either true or false
+     * @param payment
+     * @return
      */
     @Override
-    public boolean verifyTransaction(String transactionReference) {
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException _) {
-        }
-
-        return random.nextBoolean();
+    public String initializePayment(Payment payment) {
+        return "";
     }
 
     /**

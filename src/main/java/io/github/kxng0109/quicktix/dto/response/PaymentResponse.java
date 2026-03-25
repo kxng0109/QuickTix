@@ -30,6 +30,12 @@ public record PaymentResponse(
 		String paymentMethod,
 
 		@Schema(
+				description = "Stripe Client Secret used by the frontend to render the payment element. Only present on initialization.",
+				example = "pi_3MtwBwLkdIwHu7ix28a3tqPc_secret_hfK8Z..."
+		)
+		String clientSecret,
+
+		@Schema(
 				description = "Timestamp when payment was completed. Null if not yet paid.",
 				example = "2026-01-28T12:05:00Z",
 				nullable = true

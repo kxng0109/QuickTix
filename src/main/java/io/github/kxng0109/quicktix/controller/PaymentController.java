@@ -78,35 +78,4 @@ public class PaymentController {
 				HttpStatus.CREATED
 		);
 	}
-
-	@Operation(
-			summary = "Verify payment",
-			description = """
-					Verifies a payment with the payment gateway using the transaction reference.
-					
-					**Behavior:**
-					- Queries the payment gateway to check transaction status
-					- If successful: payment marked as COMPLETED, booking is CONFIRMED, seats are BOOKED
-					- If failed: payment marked as FAILED, booking remains PENDING (user can retry)
-					- If already verified: returns current payment status without re-checking
-					
-					**Idempotent:** Safe to call multiple times for the same transaction.
-					"""
-	)
-	@ApiResponses(value = {
-			@ApiResponse(
-					responseCode = "200",
-					description = "Payment verification result",
-					content = @Content(schema = @Schema(implementation = PaymentResponse.class))
-			),
-			@ApiResponse(responseCode = "400", description = "Invalid transaction reference", content = @Content),
-			@ApiResponse(responseCode = "404", description = "Payment not found", content = @Content)
-	})
-	@PreAuthorize("hasRole('ADMIN')")
-	@GetMapping("/verify/{transactionReference}")
-	public ResponseEntity<PaymentResponse> verifyPayment(
-			@NotBlank(message = "Transaction reference is required") @PathVariable String transactionReference
-	) {
-		return ResponseEntity.ok(paymentService.verifyPayment(transactionReference));
-	}
 }

@@ -78,31 +78,37 @@ public class PaymentService {
 		return buildPaymentResponse(savedPayment);
 	}
 
+	/**
+	 * Asynchronously confirms a payment based on a successful webhook event from Stripe.
+	 * <p>
+	 * This method acts as the absolute source of truth for payment success. It updates
+	 * the payment status, records the external transaction reference, and triggers
+	 * the booking confirmation process.
+	 * <p>
+	 * <b>Idempotency:</b> If the payment is already marked as {@code COMPLETED},
+	 * this method immediately returns to prevent duplicate processing if Stripe
+	 * sends duplicate webhook events.
+	 *
+	 * @param paymentId             the internal database ID of the payment, extracted from Stripe metadata.
+	 * @param stripePaymentIntentId the unique ID of the successful Stripe PaymentIntent.
+	 * @throws jakarta.persistence.EntityNotFoundException if the payment ID does not exist in the database.
+	 */
 	@Transactional
-	public PaymentResponse verifyPayment(String transactionReference) {
-		Payment payment = paymentRepository.findByTransactionReference(transactionReference)
-		                                   .orElseThrow(
-				                                   () -> new EntityNotFoundException("Payment not found")
-		                                   );
+	public void handleSuccessfulWebhookPayment(Long paymentId, String stripePaymentIntentId){
+		Payment payment = paymentRepository.findByBookingId(paymentId)
+				.orElseThrow(
+						() -> new EntityNotFoundException("Payment not found from webhook")
+				);
 
-		if (payment.getStatus() == PaymentStatus.COMPLETED) {
-			return buildPaymentResponse(payment);
-		}
+		if(payment.getStatus() == PaymentStatus.COMPLETED) return;
 
-		boolean isPaymentSuccessful = paymentGateway.verifyTransaction(transactionReference);
+		payment.setStatus(PaymentStatus.COMPLETED);
+		payment.setTransactionReference(stripePaymentIntentId);
+		payment.setPaidAt(Instant.now());
+		paymentRepository.save(payment);
 
-		if (isPaymentSuccessful) {
-			payment.setStatus(PaymentStatus.COMPLETED);
-			payment.setPaidAt(Instant.now());
-			paymentRepository.save(payment);
-
-			bookingService.confirmBooking(payment.getBooking().getId());
-		} else {
-			payment.setStatus(PaymentStatus.FAILED);
-			paymentRepository.save(payment);
-		}
-
-		return buildPaymentResponse(payment);
+		bookingService.confirmBooking(payment.getBooking().getId());
+		log.info("Webhook successfully processed payment ID: {}", paymentId);
 	}
 
 	@Transactional

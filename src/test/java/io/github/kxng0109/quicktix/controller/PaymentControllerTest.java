@@ -26,10 +26,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -162,48 +160,5 @@ public class PaymentControllerTest {
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.statusCode").value(400))
 		       .andExpect(jsonPath("$.path").value("/api/v1/payments/initialize"));
-	}
-
-	@Test
-	public void verifyPayment_should_return200OkAndPaymentResponse_whenTransactionReferenceIsValid() throws Exception {
-		when(paymentService.verifyPayment(anyString()))
-				.thenReturn(response);
-
-		mockMvc.perform(
-				       get("/api/v1/payments/verify/{transactionReference}", transactionReference)
-						       .with(user(adminUser))
-						       .contentType(MediaType.APPLICATION_JSON)
-		       ).andExpect(status().isOk())
-		       .andExpect(jsonPath("$.paymentId").value(paymentId))
-		       .andExpect(jsonPath("$.amount").value(amount))
-		       .andExpect(jsonPath("$.status").value(paymentStatus.getDisplayName()))
-		       .andExpect(jsonPath("$.paymentMethod").value(paymentMethod.getDisplayName()));
-	}
-
-	@Test
-	public void verifyPayment_should_return400BadRequest_whenTransactionReferenceIsInvalid() throws Exception {
-		mockMvc.perform(
-				       get("/api/v1/payments/verify/{transactionReference}", " ")
-						       .with(user(adminUser))
-						       .contentType(MediaType.APPLICATION_JSON)
-		       ).andExpect(status().isBadRequest())
-		       .andExpect(jsonPath("$.statusCode").value(400))
-		       .andExpect(jsonPath("$.path").value("/api/v1/payments/verify/%20"));
-
-		verify(paymentService, never()).verifyPayment(anyString());
-	}
-
-	@Test
-	public void verifyPayment_should_return404NotFound_whenPaymentIsNotFound() throws Exception {
-		when(paymentService.verifyPayment(anyString()))
-				.thenThrow(EntityNotFoundException.class);
-
-		mockMvc.perform(
-				       get("/api/v1/payments/verify/{transactionReference}", transactionReference)
-						       .with(user(adminUser))
-						       .contentType(MediaType.APPLICATION_JSON)
-		       ).andExpect(status().isNotFound())
-		       .andExpect(jsonPath("$.statusCode").value(404))
-		       .andExpect(jsonPath("$.path").value("/api/v1/payments/verify/" + transactionReference));
 	}
 }

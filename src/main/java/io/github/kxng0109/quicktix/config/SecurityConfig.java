@@ -40,7 +40,8 @@ public class SecurityConfig {
 								"/swagger-ui.html",
 								"/v3/api-docs/**",
 								"/api-docs/**",
-								"/api/v1/webhooks/stripe"
+								"/api/v1/webhooks/stripe",
+								"/api/v1/webhooks/paystack"
 						).permitAll()
 
 						.requestMatchers(HttpMethod.GET, "/api/v1/events/**").permitAll()

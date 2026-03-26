@@ -1,4 +1,4 @@
-package io.github.kxng0109.quicktix.controller;
+package io.github.kxng0109.quicktix.controller.webhook;
 
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;

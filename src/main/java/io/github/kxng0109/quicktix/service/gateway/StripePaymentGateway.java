@@ -10,6 +10,7 @@ import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 @Primary
 @Profile("!test")
+@ConditionalOnProperty(name = "payment.gateway.provider", havingValue = "paystack")
 @Slf4j
 public class StripePaymentGateway implements PaymentGateway {
 

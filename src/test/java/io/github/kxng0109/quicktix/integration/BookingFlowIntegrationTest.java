@@ -120,7 +120,6 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		BigDecimal totalAmount = BigDecimal.valueOf(5000).multiply(BigDecimal.valueOf(3));
 
 		InitiateBookingRequest bookingRequest = InitiateBookingRequest.builder()
-		                                                              .userId(testUser.getId())
 		                                                              .eventId(eventId)
 		                                                              .seats(seatIds)
 		                                                              .totalAmount(totalAmount)
@@ -337,7 +336,6 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 				                                          .contentType(MediaType.APPLICATION_JSON)
 				                                          .content(objectMapper.writeValueAsString(
 						                                          InitiateBookingRequest.builder()
-						                                                                .userId(cancelUser.getId())
 						                                                                .eventId(eventId)
 						                                                                .seats(seatIds)
 						                                                                .totalAmount(BigDecimal.valueOf(

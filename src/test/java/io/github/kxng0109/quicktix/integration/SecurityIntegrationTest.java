@@ -131,13 +131,13 @@ public class SecurityIntegrationTest extends BaseIntegrationTest {
 		User adminUser = User.builder()
 		                     .firstName("Admin")
 		                     .lastName("User")
-		                     .email("admin@quicktix.com")
+		                     .email("admin1@quicktix.com")
 		                     .passwordHash(passwordEncoder.encode("AdminPass123!"))
 		                     .role(Role.ADMIN)
 		                     .build();
 		userRepository.save(adminUser);
 
-		LoginRequest loginRequest = new LoginRequest("admin@quicktix.com", "AdminPass123!");
+		LoginRequest loginRequest = new LoginRequest("admin1@quicktix.com", "AdminPass123!");
 		MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
 				                                        .contentType(MediaType.APPLICATION_JSON)
 				                                        .content(objectMapper.writeValueAsString(loginRequest)))

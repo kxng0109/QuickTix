@@ -135,7 +135,6 @@ public class BookingServiceTest {
 		);
 
 		bookingRequest = InitiateBookingRequest.builder()
-		                                       .userId(userId)
 		                                       .eventId(eventId)
 		                                       .seats(List.of(seat1Id, seat2Id))
 		                                       .totalAmount(booking.getTotalAmount())

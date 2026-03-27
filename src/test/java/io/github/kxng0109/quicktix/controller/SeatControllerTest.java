@@ -78,7 +78,10 @@ public class SeatControllerTest {
 
 	@Test
 	public void holdSeats_should_return201CreatedAndListOfSeatResponse_whenRequestIsValid() throws Exception {
-		when(seatService.holdSeats(any(HoldSeatsRequest.class)))
+		when(seatService.holdSeats(
+				any(HoldSeatsRequest.class),
+				any(User.class)
+		))
 				.thenReturn(List.of(response));
 
 		mockMvc.perform(
@@ -102,13 +105,19 @@ public class SeatControllerTest {
 		       .andExpect(jsonPath("$.eventId").value("Event ID can't be null"))
 		       .andExpect(jsonPath("$.userId").value("User ID can't be null"));
 
-		verify(seatService, never()).holdSeats(any(HoldSeatsRequest.class));
+		verify(seatService, never()).holdSeats(
+				any(HoldSeatsRequest.class),
+				any(User.class)
+		);
 	}
 
 	@Test
 	public void holdSeats_should_return400BadRequest_whenSeatsAreNotAvailable() throws Exception {
 		doThrow(IllegalArgumentException.class)
-				.when(seatService).holdSeats(any(HoldSeatsRequest.class));
+				.when(seatService).holdSeats(
+						any(HoldSeatsRequest.class),
+						any(User.class)
+				);
 
 		mockMvc.perform(
 				       post("/api/v1/seats/hold")
@@ -123,7 +132,10 @@ public class SeatControllerTest {
 	@Test
 	public void holdSeats_should_return404NotFound_whenEventOrUserIsNotFound() throws Exception {
 		doThrow(EntityNotFoundException.class)
-				.when(seatService).holdSeats(any(HoldSeatsRequest.class));
+				.when(seatService).holdSeats(
+						any(HoldSeatsRequest.class),
+						any(User.class)
+				);
 
 		mockMvc.perform(
 				       post("/api/v1/seats/hold")

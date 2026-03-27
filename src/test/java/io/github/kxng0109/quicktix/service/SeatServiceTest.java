@@ -161,7 +161,7 @@ public class SeatServiceTest {
 		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
 		when(seatRepository.saveAll(eq(seats))).thenReturn(seats);
 
-		List<SeatResponse> response = seatService.holdSeats(holdSeatsRequest);
+		List<SeatResponse> response = seatService.holdSeats(holdSeatsRequest, user);
 
 		assertNotNull(response);
 		assertEquals(availableSeats, response.size());
@@ -176,7 +176,7 @@ public class SeatServiceTest {
 	public void holdSeats_should_throwEntityNotFoundException_whenNoUserIsFound() {
 		when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest));
+		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
 		verify(userRepository).findById(anyLong());
 		verify(eventRepository, never()).findById(anyLong());
@@ -189,7 +189,7 @@ public class SeatServiceTest {
 		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
 		when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest));
+		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
 		verify(userRepository).findById(anyLong());
 		verify(eventRepository).findById(anyLong());
@@ -204,7 +204,7 @@ public class SeatServiceTest {
 		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
 
-		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest));
+		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
 		verify(userRepository).findById(anyLong());
 		verify(eventRepository).findById(anyLong());
@@ -224,7 +224,7 @@ public class SeatServiceTest {
 		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
 
-		assertThrows(IllegalArgumentException.class, () -> seatService.holdSeats(holdSeatsRequest));
+		assertThrows(IllegalArgumentException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
 		verify(userRepository).findById(anyLong());
 		verify(eventRepository).findById(anyLong());
@@ -240,7 +240,7 @@ public class SeatServiceTest {
 		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
 
-		assertThrows(IllegalArgumentException.class, () -> seatService.holdSeats(holdSeatsRequest));
+		assertThrows(IllegalArgumentException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
 		verify(userRepository).findById(anyLong());
 		verify(eventRepository).findById(anyLong());

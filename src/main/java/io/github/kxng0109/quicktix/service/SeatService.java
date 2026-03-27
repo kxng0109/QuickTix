@@ -56,8 +56,8 @@ public class SeatService {
     }
 
     @Transactional
-    public List<SeatResponse> holdSeats(HoldSeatsRequest request) {
-        User user = userRepository.findById(request.userId())
+    public List<SeatResponse> holdSeats(HoldSeatsRequest request, User currentUser) {
+        User user = userRepository.findById(currentUser.getId())
                                   .orElseThrow(
                                           () -> new EntityNotFoundException("User not found")
                                   );

@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.controller;
 
 import io.github.kxng0109.quicktix.dto.request.HoldSeatsRequest;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
+import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.service.SeatService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -74,9 +76,10 @@ public class SeatController {
 	@PreAuthorize("hasAnyRole('ADMIN', 'USER')")
 	@PostMapping("/hold")
 	public ResponseEntity<List<SeatResponse>> holdSeats(
-			@Valid @RequestBody HoldSeatsRequest request
+			@Valid @RequestBody HoldSeatsRequest request,
+			@AuthenticationPrincipal User currentUser
 	) {
-		return new ResponseEntity<>(seatService.holdSeats(request), HttpStatus.CREATED);
+		return new ResponseEntity<>(seatService.holdSeats(request, currentUser), HttpStatus.CREATED);
 	}
 
 	@Operation(

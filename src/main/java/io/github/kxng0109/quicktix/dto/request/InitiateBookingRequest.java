@@ -12,16 +12,6 @@ import java.util.List;
 @Schema(description = "Request payload for creating a new booking")
 public record InitiateBookingRequest(
 		@Schema(
-				description = "ID of the user making the booking",
-				example = "1",
-				requiredMode = Schema.RequiredMode.REQUIRED,
-				minimum = "1"
-		)
-		@NotNull(message = "User ID is required")
-		@Positive(message = "User ID must be positive")
-		Long userId,
-
-		@Schema(
 				description = "ID of the event being booked",
 				example = "1",
 				requiredMode = Schema.RequiredMode.REQUIRED,

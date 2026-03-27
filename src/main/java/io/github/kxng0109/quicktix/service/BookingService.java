@@ -81,7 +81,7 @@ public class BookingService {
 				                             () -> new EntityNotFoundException("Event not found.")
 		                             );
 
-		User user = userRepository.findById(request.userId())
+		User user = userRepository.findById(currentUser.getId())
 		                          .orElseThrow(
 				                          () -> new EntityNotFoundException("User not found.")
 		                          );
@@ -90,7 +90,7 @@ public class BookingService {
 
 		List<Seat> seats = seatService.validateAndGetHeldSeats(
 				request.seats(),
-				request.userId(),
+				currentUser.getId(),
 				request.eventId()
 		);
 

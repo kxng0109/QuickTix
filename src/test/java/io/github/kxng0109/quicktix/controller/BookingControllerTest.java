@@ -67,7 +67,6 @@ public class BookingControllerTest {
 	@BeforeEach
 	public void setup() {
 		request = InitiateBookingRequest.builder()
-		                                .userId(1L)
 		                                .eventId(20L)
 		                                .seats(List.of(10L, 11L))
 		                                .totalAmount(totalAmount)
@@ -119,8 +118,6 @@ public class BookingControllerTest {
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
-		       // Fix 2: messages updated to match the actual @NotNull messages on InitiateBookingRequest
-		       .andExpect(jsonPath("$.userId").value("User ID is required"))
 		       .andExpect(jsonPath("$.eventId").value("Event ID is required"))
 		       .andExpect(jsonPath("$.seats").value("Seats are required"));
 

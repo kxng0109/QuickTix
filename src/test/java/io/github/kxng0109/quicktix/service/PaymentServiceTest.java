@@ -3,6 +3,7 @@ package io.github.kxng0109.quicktix.service;
 import io.github.kxng0109.quicktix.dto.request.PaymentRequest;
 import io.github.kxng0109.quicktix.dto.response.PaymentResponse;
 import io.github.kxng0109.quicktix.entity.Booking;
+import io.github.kxng0109.quicktix.entity.Event;
 import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
@@ -61,19 +62,29 @@ public class PaymentServiceTest {
 	@Mock
 	private PaymentGateway paymentGateway;
 
+	@Mock
+	private NotificationPublisherService notificationPublisherService;
+
 	@InjectMocks
 	private PaymentService paymentService;
 
 	private Payment payment;
 	private Booking booking;
 	private User user;
+	private Event event;
 
 	@BeforeEach
 	void setUp() {
 		user = User.builder()
 		           .id(300L)
 		           .role(Role.USER)
+		           .email("test@example.com")
 		           .build();
+
+		event = Event.builder()
+		             .id(1000L)
+		             .name("An event")
+		             .build();
 
 		booking = Booking.builder()
 		                 .id(bookingId)
@@ -81,6 +92,7 @@ public class PaymentServiceTest {
 		                 .bookingReference(UUID.randomUUID().toString())
 		                 .totalAmount(totalAmount)
 		                 .user(user)
+		                 .event(event)
 		                 .build();
 
 		payment = Payment.builder()

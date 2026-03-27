@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.PaymentRequest;
+import io.github.kxng0109.quicktix.dto.request.message.NotificationRequest;
 import io.github.kxng0109.quicktix.dto.response.PaymentResponse;
 import io.github.kxng0109.quicktix.entity.Booking;
 import io.github.kxng0109.quicktix.entity.Payment;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -34,6 +36,7 @@ public class PaymentService {
 	private final BookingRepository bookingRepository;
 	private final BookingService bookingService;
 	private final PaymentGateway paymentGateway;
+	private final NotificationPublisherService notificationPublisherService;
 
 	@Transactional(readOnly = true)
 	public PaymentResponse getPaymentByBookingId(Long bookingId, User currentUser) {
@@ -94,13 +97,13 @@ public class PaymentService {
 	 * @throws jakarta.persistence.EntityNotFoundException if the payment ID does not exist in the database.
 	 */
 	@Transactional
-	public void handleSuccessfulWebhookPayment(Long paymentId, String stripePaymentIntentId){
+	public void handleSuccessfulWebhookPayment(Long paymentId, String stripePaymentIntentId) {
 		Payment payment = paymentRepository.findByBookingId(paymentId)
-				.orElseThrow(
-						() -> new EntityNotFoundException("Payment not found from webhook")
-				);
+		                                   .orElseThrow(
+				                                   () -> new EntityNotFoundException("Payment not found from webhook")
+		                                   );
 
-		if(payment.getStatus() == PaymentStatus.COMPLETED) return;
+		if (payment.getStatus() == PaymentStatus.COMPLETED) return;
 
 		payment.setStatus(PaymentStatus.COMPLETED);
 		payment.setTransactionReference(stripePaymentIntentId);
@@ -109,6 +112,21 @@ public class PaymentService {
 
 		bookingService.confirmBooking(payment.getBooking().getId());
 		log.info("Webhook successfully processed payment ID: {}", paymentId);
+
+		// Send the email task to NotifyHub
+		NotificationRequest receipt = NotificationRequest.builder()
+		                                                 .to(List.of(payment.getBooking().getUser()
+		                                                                    .getEmail())) // NotifyHub expects a List
+		                                                 .subject(
+				                                                 "Your QuickTix Booking Confirmation: " + payment.getBooking()
+				                                                                                                 .getBookingReference())
+		                                                 .htmlBody(
+				                                                 "<h1>Payment Successful!</h1><p>Your seats are confirmed for " + payment.getBooking()
+				                                                                                                                         .getEvent()
+				                                                                                                                         .getName() + ".</p>")
+		                                                 .build();
+
+		notificationPublisherService.publishNotification(receipt);
 	}
 
 	@Transactional

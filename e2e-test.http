@@ -1,0 +1,115 @@
+### ============================================================================
+### QUICKTIX END-TO-END TEST SUITE
+### Run these sequentially by clicking the green "Play" buttons next to each ###
+### ============================================================================
+
+### 1. Login Admin & Save Token
+POST http://localhost:8081/api/v1/auth/login
+Content-Type: application/json
+
+{
+	"email": "admin@quicktix.com",
+	"password": "Password123!"
+}
+
+> {%
+    client.global.set("admin_token", response.body.token);
+%}
+
+### 2. Login Normal User & Save Token
+POST http://localhost:8081/api/v1/auth/login
+Content-Type: application/json
+
+{
+	"email": "joshua@example.com",
+	"password": "Password123!"
+}
+
+> {%
+    client.global.set("user_token", response.body.token);
+%}
+
+### 3. Create a Venue (Admin)
+POST http://localhost:8081/api/v1/venues
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+	"name": "Eko Convention Center",
+	"address": "Victoria Island",
+	"city": "Lagos",
+	"totalCapacity": 500
+}
+
+> {%
+    client.global.set("venue_id", response.body.id);
+%}
+
+### 4. Create an Event (Admin)
+POST http://localhost:8081/api/v1/events
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "name": "Tech Innovators Summit 2026",
+  "description": "The biggest tech event in Lagos.",
+  "venueId": {{venue_id}},
+  "eventStartDateTime": "2026-05-10T09:00:00Z",
+  "eventEndDateTime": "2026-05-10T18:00:00Z",
+  "ticketPrice": 45000.00,
+  "numberOfSeats": 100
+}
+
+> {%
+    client.global.set("event_id", response.body.id);
+%}
+
+### 5. Get an Available Seat ID (NEW STEP)
+GET http://localhost:8081/api/v1/events/{{event_id}}/seats/available
+Authorization: Bearer {{user_token}}
+
+> {%
+    // Extracts the very first available seat from the paginated 'content' array
+    client.global.set("seat_id", response.body.content[0].id);
+%}
+
+### 6. Hold a Seat (Normal User)
+POST http://localhost:8081/api/v1/seats/hold
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "eventId": {{event_id}},
+  "seatIds": [{{seat_id}}]
+}
+
+### 7. Initiate Booking (Normal User)
+POST http://localhost:8081/api/v1/bookings
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "eventId": {{event_id}},
+  "seats": [{{seat_id}}],
+  "userId": 2,
+  "totalAmount": 45000.00
+}
+
+> {%
+    client.global.set("booking_id", response.body.id);
+%}
+
+### 8. Initialize Payment (Normal User)
+POST http://localhost:8081/api/v1/payments
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "bookingId": {{booking_id}},
+  "amount": 45000.00,
+  "paymentMethod": "CREDIT_CARD"
+}
+
+> {%
+    client.global.set("payment_id", response.body.paymentId);
+%}

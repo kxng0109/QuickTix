@@ -1,14 +1,21 @@
 package io.github.kxng0109.quicktix.service;
 
+import io.github.kxng0109.quicktix.dto.request.message.NotificationRequest;
+import io.github.kxng0109.quicktix.entity.Booking;
 import io.github.kxng0109.quicktix.entity.Event;
 import io.github.kxng0109.quicktix.entity.Payment;
+import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.EventStatus;
+import io.github.kxng0109.quicktix.repositories.BookingRepository;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
 import io.github.kxng0109.quicktix.repositories.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -25,6 +32,8 @@ public class SchedulerService {
 	private final PaymentRepository paymentRepository;
 	private final EventRepository eventRepository;
 	private final PaymentService paymentService;
+	private final NotificationPublisherService notificationPublisherService;
+	private final BookingRepository bookingRepository;
 
 	/**
 	 * Periodically releases seats that have been HELD but not proceeded to booking.
@@ -123,17 +132,52 @@ public class SchedulerService {
 	}
 
 	/**
-	 * Sends email reminders to users for events occurring the next day.
+	 * Runs every hour to find events starting in exactly 24 hours.
+	 * Dispatches a reminder email to all confirmed attendees via RabbitMQ.
 	 * <p>
-	 * <strong>Frequency:</strong> Daily at 09:00 AM server time.
+	 * <strong>Frequency:</strong> Every hour.
 	 * <br>
-	 * <strong>Logic:</strong> Finds all bookings for events scheduled within the next 24-48 hours
+	 * <strong>Logic:</strong> Finds all bookings for events scheduled within the next 24 hours
 	 * and triggers a notification to the user.
 	 */
-   /* @Scheduled(cron = "0 0 9 * * *")
-    public void sendEventReminders() {
-        log.info("Running job: Send Events Reminders");
-        //TODO: Implement notification service
-        log.info("Job Completed: Send Events Reminders");
-    }*/
+	@Scheduled(cron = "0 0 * * * *")
+	@Transactional(readOnly = true)
+	public void sendEventReminders() {
+		log.info("Running job: Send Events Reminders");
+
+		Instant now = Instant.now();
+		Instant startTime = now.plus(23, ChronoUnit.HOURS).plus(30, ChronoUnit.MINUTES);
+		Instant endTime = now.plus(24, ChronoUnit.HOURS).plus(30, ChronoUnit.MINUTES);
+
+		List<Event> upcomingEvents = eventRepository.findByEventStartDateTimeBetween(
+				startTime,
+				endTime,
+				Pageable.unpaged()
+		).getContent();
+
+		if (upcomingEvents.isEmpty()) return;
+
+		int notificationsSent = 0;
+
+		for (Event event : upcomingEvents) {
+			List<Booking> confirmedBookings = bookingRepository.findByEventIdAndStatus(event.getId(),
+			                                                                           BookingStatus.CONFIRMED
+			);
+
+			for (Booking booking : confirmedBookings) {
+				NotificationRequest reminder = NotificationRequest.builder()
+				                                                  .to(List.of(booking.getUser().getEmail()))
+				                                                  .subject(
+						                                                  "Reminder: " + event.getName() + " is tomorrow!")
+				                                                  .htmlBody(
+						                                                  "<h1>Get Ready!</h1><p>Your event <b>" + event.getName() + "</b> starts in 24 hours. Have your ticket ready.</p>")
+				                                                  .build();
+
+				notificationPublisherService.publishNotification(reminder);
+				notificationsSent++;
+			}
+		}
+
+		log.info("Finished sending event reminders. Total dispatched to RabbitMQ: {}", notificationsSent);
+	}
 }

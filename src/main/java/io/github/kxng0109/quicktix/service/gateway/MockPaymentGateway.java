@@ -15,12 +15,12 @@ public class MockPaymentGateway implements PaymentGateway {
     private final Random random = new Random();
 
     /**
-     * @param payment
-     * @return
+     * @param payment the internal payment record to be processed
+     * @return a client secret
      */
     @Override
     public String initializePayment(Payment payment) {
-        return "";
+        return "clientSecret";
     }
 
     /**

@@ -23,10 +23,9 @@ public record HoldSeatsRequest(
 		@Schema(
 				description = "ID of the user holding the seats",
 				example = "1",
-				requiredMode = Schema.RequiredMode.REQUIRED,
+				requiredMode = Schema.RequiredMode.NOT_REQUIRED,
 				minimum = "1"
 		)
-		@NotNull(message = "User ID can't be null")
 		@Positive(message = "User ID can't be negative or zero")
 		Long userId,
 

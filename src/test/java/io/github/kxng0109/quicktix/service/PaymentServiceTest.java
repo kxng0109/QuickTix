@@ -159,16 +159,42 @@ public class PaymentServiceTest {
 				.thenReturn(Optional.of(booking));
 		when(paymentRepository.save(any(Payment.class)))
 				.thenReturn(payment);
+		when(paymentGateway.initializePayment(any(Payment.class)))
+				.thenReturn("clientSecret");
 
-		PaymentResponse response = paymentService.initializePayment(request);
+		PaymentResponse response = paymentService.initializePayment(request, user);
 
 		assertNotNull(response);
 		assertEquals(paymentStatus.getDisplayName(), response.status());
 		assertEquals(paymentMethod.getDisplayName(), response.paymentMethod());
 		assertEquals(paymentId, response.paymentId());
+		assertEquals("clientSecret", response.clientSecret());
 
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).save(any(Payment.class));
+	}
+
+	@Test
+	public void initializePayment_should_throwEntityNotFoundException_when_userDoesNotOwnBooking() {
+		// Create a malicious user with a different ID than the one on the booking
+		User maliciousUser = User.builder()
+		                         .id(999L)
+		                         .role(Role.USER)
+		                         .email("hacker@example.com")
+		                         .build();
+
+		when(bookingRepository.findById(anyLong()))
+				.thenReturn(Optional.of(booking)); // The booking belongs to 'user' (ID 300L)
+
+		EntityNotFoundException ex = assertThrows(
+				EntityNotFoundException.class,
+				() -> paymentService.initializePayment(request, maliciousUser)
+		);
+
+		assertEquals("Booking not found", ex.getMessage());
+
+		verify(bookingRepository).findById(anyLong());
+		verify(paymentRepository, never()).save(any(Payment.class)); // Ensure no payment is created
 	}
 
 	@Test
@@ -178,7 +204,7 @@ public class PaymentServiceTest {
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> paymentService.initializePayment(request)
+				() -> paymentService.initializePayment(request, user)
 		);
 
 		verify(bookingRepository).findById(anyLong());
@@ -194,7 +220,7 @@ public class PaymentServiceTest {
 
 		assertThrows(
 				InvalidOperationException.class,
-				() -> paymentService.initializePayment(request)
+				() -> paymentService.initializePayment(request, user)
 		);
 
 		verify(bookingRepository).findById(anyLong());
@@ -210,7 +236,7 @@ public class PaymentServiceTest {
 
 		InvalidAmountException ex = assertThrows(
 				InvalidAmountException.class,
-				() -> paymentService.initializePayment(request)
+				() -> paymentService.initializePayment(request, user)
 		);
 
 		assertEquals("Payment amount mismatch", ex.getMessage());

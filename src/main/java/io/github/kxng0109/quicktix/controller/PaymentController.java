@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.controller;
 
 import io.github.kxng0109.quicktix.dto.request.PaymentRequest;
 import io.github.kxng0109.quicktix.dto.response.PaymentResponse;
+import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,11 +12,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,8 +41,7 @@ public class PaymentController {
 					**Payment flow:**
 					1. Call this endpoint to initialize payment and get transaction reference
 					2. User completes payment through the external gateway
-					3. Call `/api/v1/payments/verify/{transactionReference}` to confirm payment
-					4. On successful verification, booking is automatically confirmed
+					3. On successful verification, booking is automatically confirmed
 					"""
 	)
 	@ApiResponses(value = {
@@ -68,13 +68,14 @@ public class PaymentController {
 			),
 			@ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
 	})
-	@PreAuthorize("hasRole('ADMIN')")
+	@PreAuthorize("hasAnyRole('ADMIN', 'USER')")
 	@PostMapping("/initialize")
 	public ResponseEntity<PaymentResponse> initializePayment(
-			@Valid @RequestBody PaymentRequest request
+			@Valid @RequestBody PaymentRequest request,
+			@AuthenticationPrincipal User currentUser
 	) {
 		return new ResponseEntity<>(
-				paymentService.initializePayment(request),
+				paymentService.initializePayment(request, currentUser),
 				HttpStatus.CREATED
 		);
 	}

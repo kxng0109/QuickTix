@@ -53,11 +53,15 @@ public class PaymentService {
 	//Its job is just to start the payment,
 	// particularly creating and saving the Payment object.
 	@Transactional
-	public PaymentResponse initializePayment(PaymentRequest request) {
+	public PaymentResponse initializePayment(PaymentRequest request, User currentUser) {
 		Booking booking = bookingRepository.findById(request.bookingId())
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Booking not found")
 		                                   );
+
+		if (!booking.getUser().getId().equals(currentUser.getId())) {
+			throw new EntityNotFoundException("Booking not found");
+		}
 
 		if (booking.getStatus() != BookingStatus.PENDING) {
 			throw new InvalidOperationException("Booking status must be PENDING");
@@ -78,7 +82,17 @@ public class PaymentService {
 		                         .build();
 
 		Payment savedPayment = paymentRepository.save(payment);
-		return buildPaymentResponse(savedPayment);
+
+		String gatewayToken = paymentGateway.initializePayment(savedPayment);
+
+		return PaymentResponse.builder()
+		                      .paymentId(savedPayment.getId())
+		                      .amount(savedPayment.getAmount())
+		                      .status(savedPayment.getStatus().getDisplayName())
+		                      .paymentMethod(savedPayment.getPaymentMethod().getDisplayName())
+		                      .paidAt(savedPayment.getPaidAt())
+		                      .clientSecret(gatewayToken)
+		                      .build();
 	}
 
 	/**
@@ -131,10 +145,10 @@ public class PaymentService {
 
 	@Transactional
 	public void refundPayment(Long bookingId) {
-		Booking booking = bookingRepository.findById(bookingId)
-		                                   .orElseThrow(
-				                                   () -> new EntityNotFoundException("Booking not found")
-		                                   );
+		bookingRepository.findById(bookingId)
+		                 .orElseThrow(
+				                 () -> new EntityNotFoundException("Booking not found")
+		                 );
 
 		Payment payment = paymentRepository.findByBookingId(bookingId)
 		                                   .orElseThrow(

@@ -102,8 +102,7 @@ public class SeatControllerTest {
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
-		       .andExpect(jsonPath("$.eventId").value("Event ID can't be null"))
-		       .andExpect(jsonPath("$.userId").value("User ID can't be null"));
+		       .andExpect(jsonPath("$.eventId").value("Event ID can't be null"));
 
 		verify(seatService, never()).holdSeats(
 				any(HoldSeatsRequest.class),
@@ -167,8 +166,7 @@ public class SeatControllerTest {
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
-		       .andExpect(jsonPath("$.eventId").value("Event ID can't be null"))
-		       .andExpect(jsonPath("$.userId").value("User ID can't be null"));
+		       .andExpect(jsonPath("$.eventId").value("Event ID can't be null"));
 
 		verify(seatService, never()).releaseSeats(any(HoldSeatsRequest.class));
 	}

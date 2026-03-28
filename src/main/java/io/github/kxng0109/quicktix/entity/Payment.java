@@ -35,8 +35,8 @@ public class Payment {
     @Builder.Default
     private PaymentStatus status = PaymentStatus.PENDING;
 
-    @Column(name = "payment_provider", nullable = false)
-    private PaymentProvider paymentProvider;
+    /*@Column(name = "payment_provider", nullable = false)
+    private PaymentProvider paymentProvider;*/
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false)

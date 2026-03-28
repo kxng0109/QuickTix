@@ -86,7 +86,7 @@ public class PaymentControllerTest {
 
 	@Test
 	public void initializePayment_should_return201CreatedAndPaymentResponse_whenRequestIsValid() throws Exception {
-		when(paymentService.initializePayment(any(PaymentRequest.class)))
+		when(paymentService.initializePayment(any(PaymentRequest.class), any(User.class)))
 				.thenReturn(response);
 
 		mockMvc.perform(
@@ -114,12 +114,12 @@ public class PaymentControllerTest {
 		       .andExpect(jsonPath("$.amount").value("Amount is required"))
 		       .andExpect(jsonPath("$.paymentMethod").value("Payment method is required"));
 
-		verify(paymentService, never()).initializePayment(any(PaymentRequest.class));
+		verify(paymentService, never()).initializePayment(any(PaymentRequest.class), any(User.class));
 	}
 
 	@Test
 	public void initializePayment_should_return404NotFound_whenBookingIsNotFound() throws Exception {
-		when(paymentService.initializePayment(any(PaymentRequest.class)))
+		when(paymentService.initializePayment(any(PaymentRequest.class), any(User.class)))
 				.thenThrow(EntityNotFoundException.class);
 
 		mockMvc.perform(
@@ -134,7 +134,7 @@ public class PaymentControllerTest {
 
 	@Test
 	public void initializePayment_should_return400BadRequest_whenPaymentStatusIsNotPending() throws Exception {
-		when(paymentService.initializePayment(any(PaymentRequest.class)))
+		when(paymentService.initializePayment(any(PaymentRequest.class), any(User.class)))
 				.thenThrow(InvalidOperationException.class);
 
 		mockMvc.perform(
@@ -149,7 +149,7 @@ public class PaymentControllerTest {
 
 	@Test
 	public void initializePayment_should_return400BadRequest_whenAmountIsDifferent() throws Exception {
-		when(paymentService.initializePayment(any(PaymentRequest.class)))
+		when(paymentService.initializePayment(any(PaymentRequest.class), any(User.class)))
 				.thenThrow(InvalidAmountException.class);
 
 		mockMvc.perform(

@@ -27,7 +27,7 @@ import java.math.BigDecimal;
 @Service
 @RequiredArgsConstructor
 @Primary
-@Profile("!test")
+@Profile({"!test", "!mock"})
 @ConditionalOnProperty(name = "payment.gateway.provider", havingValue = "paystack")
 @Slf4j
 public class StripePaymentGateway implements PaymentGateway {

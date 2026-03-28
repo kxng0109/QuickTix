@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.Random;
 
 @Service
-@Profile("test")
+@Profile({"test", "mock"})
 @Primary
 public class MockPaymentGateway implements PaymentGateway {
 

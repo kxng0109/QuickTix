@@ -33,4 +33,3 @@ build/
 .vscode/
 
 .env
-/src/main/java/io/github/kxng0109/quicktix/config/DataSeeder.java

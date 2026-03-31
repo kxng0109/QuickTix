@@ -7,6 +7,8 @@ import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.repositories.VenueRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class VenueService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "venues", key = "#venueId", sync = true)
     public VenueResponse getVenueById(Long venueId) {
         Venue venue = getVenueEntityById(venueId);
 
@@ -40,6 +43,7 @@ public class VenueService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "venues", key = "'all-' + #pageable.pageNumber", sync = true)
     public Page<VenueResponse> getAllVenues(Pageable pageable) {
         Page<Venue> venues = venueRepository.findAll(pageable);
 
@@ -47,6 +51,7 @@ public class VenueService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "venues", key = "#city", sync = true)
     public Page<VenueResponse> getVenuesByCity(String city, Pageable pageable) {
         Page<Venue> venues = venueRepository.findByCity(city, pageable);
 
@@ -54,6 +59,7 @@ public class VenueService {
     }
 
     @Transactional
+    @CacheEvict(value = "venues", allEntries = true)
     public VenueResponse updateVenueById(Long venueId, CreateVenueRequest request) {
         Venue venue = getVenueEntityById(venueId);
 
@@ -68,6 +74,7 @@ public class VenueService {
     }
 
     @Transactional
+    @CacheEvict(value = "venues", allEntries = true)
     public void deleteVenueById(Long venueId) {
         Venue venue = getVenueEntityById(venueId);
 

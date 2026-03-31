@@ -9,7 +9,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(name = "seats")
+@Table(name = "seats", indexes = {
+        @Index(name = "idx_seat_event_status", columnList = "event_id, seat_status")
+})
 @Getter
 @Setter
 @Builder

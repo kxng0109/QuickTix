@@ -3,6 +3,8 @@ package io.github.kxng0109.quicktix.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
+import java.io.Serializable;
+
 @Builder
 @Schema(description = "Seat details response")
 public record SeatResponse(
@@ -21,5 +23,5 @@ public record SeatResponse(
 				allowableValues = {"Available", "Held", "Booked"}
 		)
 		String status
-) {
+) implements Serializable {
 }

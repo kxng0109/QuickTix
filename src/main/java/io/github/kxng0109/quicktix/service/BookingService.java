@@ -34,6 +34,7 @@ public class BookingService {
 	private final EventRepository eventRepository;
 	private final SeatRepository seatRepository;
 	private final SeatService seatService;
+	private final SeatLockService seatLockService;
 
 	@Transactional(readOnly = true)
 	public BookingResponse getBookingById(Long bookId, User currentUser) {
@@ -212,6 +213,7 @@ public class BookingService {
 		handleBookingCancellation(pendingBookings);
 	}
 
+	//When the booking expires or the event is cancelled
 	private void handleBookingCancellation(List<Booking> expiredBookings) {
 		if (expiredBookings.isEmpty()) return;
 
@@ -221,6 +223,8 @@ public class BookingService {
 			booking.setStatus(BookingStatus.EXPIRED);
 
 			for (Seat seat : booking.getSeats()) {
+				seatLockService.releaseLock(seat.getId(), booking.getUser().getEmail());
+
 				seat.setBooking(null);
 				seat.setHeldByUser(null);
 				seat.setHeldAt(null);
@@ -233,12 +237,14 @@ public class BookingService {
 		bookingRepository.saveAll(expiredBookings);
 	}
 
-
+	//Booking cancelled by user, or successfully refunded
 	private void handleBookingCancellation(Booking booking) {
 		booking.setStatus(BookingStatus.CANCELLED);
 
 		List<Seat> seatsToRelease = booking.getSeats();
 		for (Seat seat : seatsToRelease) {
+			seatLockService.releaseLock(seat.getId(), booking.getUser().getEmail());
+
 			seat.setSeatStatus(SeatStatus.AVAILABLE);
 			seat.setHeldAt(null);
 			seat.setHeldByUser(null);

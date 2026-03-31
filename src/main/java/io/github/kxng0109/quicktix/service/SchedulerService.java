@@ -6,6 +6,7 @@ import io.github.kxng0109.quicktix.entity.Event;
 import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.EventStatus;
+import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
 import io.github.kxng0109.quicktix.repositories.PaymentRepository;
@@ -111,7 +112,10 @@ public class SchedulerService {
 
 		for (Event event : cancelledEvents) {
 			//Check if any "COMPLETED" payments still exist for this event
-			List<Payment> stuckPayments = paymentRepository.findAllCompletedPaymentsForEvent(event.getId());
+			List<Payment> stuckPayments = paymentRepository.findByBooking_EventIdAndStatus(
+					event.getId(),
+					PaymentStatus.COMPLETED
+			);
 
 			if (!stuckPayments.isEmpty()) {
 				log.warn("Found {} stuck payments for Cancelled Event ID: {}. Triggering recovery.",
@@ -120,7 +124,7 @@ public class SchedulerService {
 
 				for (Payment payment : stuckPayments) {
 					try {
-						paymentService.processRefundForCancelledEvent(payment);
+						paymentService.processRefundForCancelledEvent(payment.getId());
 					} catch (Exception e) {
 						log.error("Recovery failed for payment {}", payment.getId(), e);
 					}

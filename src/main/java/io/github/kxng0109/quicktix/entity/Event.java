@@ -11,7 +11,9 @@ import java.time.Instant;
 import java.util.List;
 
 @Entity
-@Table(name = "events")
+@Table(name = "events", indexes = {
+        @Index(name = "idx_event_status_date", columnList = "status, event_start_date_time")
+})
 @Getter
 @Setter
 @Builder

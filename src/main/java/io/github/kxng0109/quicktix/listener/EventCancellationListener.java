@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.listener;
 
 import io.github.kxng0109.quicktix.entity.Payment;
+import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import io.github.kxng0109.quicktix.event.EventCancelledEvent;
 import io.github.kxng0109.quicktix.repositories.PaymentRepository;
 import io.github.kxng0109.quicktix.service.BookingService;
@@ -28,12 +29,16 @@ public class EventCancellationListener {
 		Long eventId = event.eventId();
 		log.info("Starting background refund process for Event ID: {}", eventId);
 
-		List<Payment> payments = paymentRepository.findAllCompletedPaymentsForEvent(eventId);
+		//Using it to get all payments for an event in order to issue a refund for canceled events
+		List<Payment> payments = paymentRepository.findByBooking_EventIdAndStatus(
+				eventId,
+				PaymentStatus.COMPLETED
+		);
 		log.info("Found {} payments for Event ID '{}' to refund", payments.size(), eventId);
 
 		for (Payment payment : payments) {
 			try {
-				paymentService.processRefundForCancelledEvent(payment);
+				paymentService.processRefundForCancelledEvent(payment.getId());
 			} catch (Exception e) {
 				log.error("Failed to process refund for payment ID: {}", payment.getId(), e);
 			}

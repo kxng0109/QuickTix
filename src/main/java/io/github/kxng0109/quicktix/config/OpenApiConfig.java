@@ -6,6 +6,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.tags.Tag;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,6 +14,9 @@ import java.util.List;
 
 @Configuration
 public class OpenApiConfig {
+
+	@Value("${server.servlet.context-path:/}")
+	private String contextPath;
 
 	@Bean
 	public OpenAPI quickTixOpenAPI() {
@@ -52,8 +56,11 @@ public class OpenApiConfig {
 				)
 				.servers(List.of(
 						new Server()
-								.url("http://localhost:8080")
-								.description("Local development server")
+								.url(contextPath)
+								.description("Current Environment Server"),
+						new Server()
+								.url("http://localhost:80")
+								.description("Nginx Load Balancer")
 				))
 				.tags(List.of(
 						new Tag().name("Authentication").description("User registration and login"),

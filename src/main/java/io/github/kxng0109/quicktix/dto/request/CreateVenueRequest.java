@@ -40,7 +40,7 @@ public record CreateVenueRequest(
 				minimum = "0"
 		)
 		@NotNull(message = "Venue total capacity can not be blank")
-		@Min(value = 0, message = "Venue total capacity must be greater than 0")
+		@Min(value = 1, message = "Venue total capacity must be greater than 0")
 		Integer totalCapacity
 ) {
 }

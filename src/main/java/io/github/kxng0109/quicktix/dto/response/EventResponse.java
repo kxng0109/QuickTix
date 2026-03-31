@@ -3,6 +3,7 @@ package io.github.kxng0109.quicktix.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -39,5 +40,5 @@ public record EventResponse(
 
 		@Schema(description = "Event end date and time", example = "2026-06-15T23:00:00Z")
 		Instant eventEndDateTime
-) {
+) implements Serializable {
 }

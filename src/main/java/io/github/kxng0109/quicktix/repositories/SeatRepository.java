@@ -24,6 +24,7 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
 
 	List<Seat> findBySeatStatusAndHeldAtBefore(SeatStatus seatStatus, Instant cutoffTime);
 
+	//Not in use. Replaced by pessimistic locking using Redis, but I still want to keep it here
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("SELECT s FROM Seat s WHERE s.id IN :seatIds")
 	List<Seat> findAllByIdWithLock(@Param("seatIds") List<Long> seatIds);

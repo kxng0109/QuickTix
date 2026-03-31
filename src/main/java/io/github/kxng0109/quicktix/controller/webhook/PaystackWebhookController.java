@@ -3,6 +3,7 @@ package io.github.kxng0109.quicktix.controller.webhook;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kxng0109.quicktix.service.PaymentService;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 /**
  * REST Controller responsible for listening to server-to-server events from Paystack.
@@ -25,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 @RequestMapping("/api/v1/webhooks/paystack")
 @Slf4j
 @RequiredArgsConstructor
+@Hidden
 public class PaystackWebhookController {
 
 	private final PaymentService paymentService;
@@ -113,7 +116,10 @@ public class PaystackWebhookController {
 				result.append(String.format("%02x", b));
 			}
 
-			return result.toString().toLowerCase().equals(sigHeader);
+			return MessageDigest.isEqual(
+					result.toString().toLowerCase().getBytes(StandardCharsets.UTF_8),
+					sigHeader.getBytes(StandardCharsets.UTF_8)
+			);
 		} catch (Exception e) {
 			log.error("Error computing HMAC SHA-512 signature", e);
 			return false;

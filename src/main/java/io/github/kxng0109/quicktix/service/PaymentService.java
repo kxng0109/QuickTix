@@ -182,10 +182,12 @@ public class PaymentService {
 	 * It uses {@link Propagation#REQUIRES_NEW} so one failed transaction doesn't rollback the rest.
 	 * They commit independently.
 	 *
-	 * @param payment the {@link Payment payment} to be refunded
+	 * @param paymentId the id of the {@link Payment payment} to be refunded
 	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public void processRefundForCancelledEvent(Payment payment) {
+	public void processRefundForCancelledEvent(Long paymentId) {
+		Payment payment = paymentRepository.findById(paymentId)
+				.orElseThrow(() -> new EntityNotFoundException("Payment not found!"));
 		if (payment.getStatus() != PaymentStatus.COMPLETED) return;
 
 		log.debug("Processing refund for Payment ID: {}", payment.getId());

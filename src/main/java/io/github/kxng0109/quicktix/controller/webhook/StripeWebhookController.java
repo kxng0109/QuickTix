@@ -5,6 +5,7 @@ import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
 import io.github.kxng0109.quicktix.service.PaymentService;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/webhooks/stripe")
 @RequiredArgsConstructor
 @Slf4j
+@Hidden
 public class StripeWebhookController {
 
 	private final PaymentService paymentService;

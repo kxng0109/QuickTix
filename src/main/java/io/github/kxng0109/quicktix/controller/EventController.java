@@ -75,7 +75,6 @@ public class EventController {
 			@ApiResponse(responseCode = "404", description = "Event not found", content = @Content)
 	})
 	@GetMapping("/{id}")
-	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<EventResponse> getEventById(
 			@Min(value = 1, message = "Event ID must have a value of at least 1") @PathVariable long id
 	) {
@@ -163,7 +162,7 @@ public class EventController {
 		return ResponseEntity.ok(eventService.getEventsByDateRange(request, pageable));
 	}
 
-	@Operation(
+	/*@Operation(
 			summary = "Update event",
 			description = """
 					Updates an existing event's details. Note:
@@ -184,5 +183,5 @@ public class EventController {
 			@Valid @RequestBody CreateEventRequest request
 	) {
 		return ResponseEntity.ok(eventService.updateEventById(id, request));
-	}
+	}*/
 }

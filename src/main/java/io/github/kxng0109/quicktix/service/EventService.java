@@ -16,6 +16,8 @@ import io.github.kxng0109.quicktix.repositories.SeatRepository;
 import io.github.kxng0109.quicktix.repositories.VenueRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -87,6 +89,7 @@ public class EventService {
 	}
 
 	@Transactional(readOnly = true)
+	@Cacheable(value = "events", key = "#id", sync = true)
 	public EventResponse getEventById(Long id) {
 		Event event = eventRepository.findById(id)
 		                             .orElseThrow(
@@ -127,6 +130,7 @@ public class EventService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "events", allEntries = true)
 	public EventResponse updateEventById(Long id, CreateEventRequest request) {
 		Event event = eventRepository.findById(id)
 		                             .orElseThrow(
@@ -164,6 +168,7 @@ public class EventService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "events", allEntries = true)
 	public void cancelEventById(Long eventId) {
 		Event event = eventRepository.findById(eventId)
 		                             .orElseThrow(
@@ -181,6 +186,7 @@ public class EventService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "events", allEntries = true)
 	public void deleteEventById(Long id) {
 		Event event = eventRepository.findById(id)
 		                             .orElseThrow(() -> new EntityNotFoundException("Event not found"));
@@ -197,6 +203,7 @@ public class EventService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "events", allEntries = true)
 	public void updateEventStatus() {
 		List<Event> startedUpcomingEvents = eventRepository.findStartedEvent(
 				EventStatus.UPCOMING,

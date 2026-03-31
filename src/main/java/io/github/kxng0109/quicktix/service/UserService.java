@@ -3,7 +3,6 @@ package io.github.kxng0109.quicktix.service;
 import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
 import io.github.kxng0109.quicktix.dto.response.UserResponse;
 import io.github.kxng0109.quicktix.entity.User;
-import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.exception.ResourceInUseException;
 import io.github.kxng0109.quicktix.exception.UserExistsException;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
@@ -83,6 +82,7 @@ public class UserService {
 					"Cannot delete user with existing bookings. Deactivate the account instead.");
 		}
 
+		//TODO: Don't hard delete users
 		userRepository.delete(user);
 	}
 

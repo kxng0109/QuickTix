@@ -102,12 +102,13 @@ public class SeatController {
 			),
 			@ApiResponse(responseCode = "404", description = "Event or user not found", content = @Content)
 	})
-	@PreAuthorize("hasRole('ADMIN')")
+	@PreAuthorize("hasAnyRole('ADMIN', 'USER')")
 	@PostMapping("/release")
 	public ResponseEntity<Void> releaseSeats(
-			@Valid @RequestBody HoldSeatsRequest request
+			@Valid @RequestBody HoldSeatsRequest request,
+			@AuthenticationPrincipal User currentUser
 	) {
-		seatService.releaseSeats(request);
+		seatService.releaseSeats(request, currentUser);
 		return ResponseEntity.noContent().build();
 	}
 }

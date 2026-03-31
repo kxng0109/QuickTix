@@ -21,15 +21,6 @@ public record HoldSeatsRequest(
 		Long eventId,
 
 		@Schema(
-				description = "ID of the user holding the seats",
-				example = "1",
-				requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-				minimum = "1"
-		)
-		@Positive(message = "User ID can't be negative or zero")
-		Long userId,
-
-		@Schema(
 				description = "List of seat IDs to hold or release",
 				example = "[1, 2, 3]",
 				requiredMode = Schema.RequiredMode.REQUIRED

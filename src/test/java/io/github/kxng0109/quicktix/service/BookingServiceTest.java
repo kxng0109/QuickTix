@@ -59,6 +59,9 @@ public class BookingServiceTest {
 	@Mock
 	private SeatService seatService;
 
+	@Mock
+	private SeatLockService seatLockService;
+
 	@InjectMocks
 	private BookingService bookingService;
 

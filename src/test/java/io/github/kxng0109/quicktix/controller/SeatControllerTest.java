@@ -57,7 +57,6 @@ public class SeatControllerTest {
 	public void setup() {
 		request = HoldSeatsRequest.builder()
 		                          .eventId(eventId)
-		                          .userId(300L)
 		                          .seatIds(seatIds)
 		                          .build();
 
@@ -155,7 +154,7 @@ public class SeatControllerTest {
 						.content(objectMapper.writeValueAsString(request))
 		).andExpect(status().isNoContent());
 
-		verify(seatService).releaseSeats(any(HoldSeatsRequest.class));
+		verify(seatService).releaseSeats(any(HoldSeatsRequest.class), any(User.class));
 	}
 
 	@Test
@@ -168,13 +167,13 @@ public class SeatControllerTest {
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.eventId").value("Event ID can't be null"));
 
-		verify(seatService, never()).releaseSeats(any(HoldSeatsRequest.class));
+		verify(seatService, never()).releaseSeats(any(HoldSeatsRequest.class), any(User.class));
 	}
 
 	@Test
 	public void releaseSeats_should_return400BadRequest_whenUserDoesNotHoldSeats() throws Exception {
 		doThrow(IllegalArgumentException.class)
-				.when(seatService).releaseSeats(any(HoldSeatsRequest.class));
+				.when(seatService).releaseSeats(any(HoldSeatsRequest.class), any(User.class));
 
 		mockMvc.perform(
 				       post("/api/v1/seats/release")
@@ -189,7 +188,7 @@ public class SeatControllerTest {
 	@Test
 	public void releaseSeats_should_return404NotFound_whenEventOrUserIsNotFound() throws Exception {
 		doThrow(EntityNotFoundException.class)
-				.when(seatService).releaseSeats(any(HoldSeatsRequest.class));
+				.when(seatService).releaseSeats(any(HoldSeatsRequest.class), any(User.class));
 
 		mockMvc.perform(
 				       post("/api/v1/seats/release")

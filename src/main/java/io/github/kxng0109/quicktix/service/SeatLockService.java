@@ -73,6 +73,8 @@ public class SeatLockService {
 	 */
 	public void releaseLock(Long seatId, String userEmail){
 		String lockKey = LOCK_PREFIX + seatId;
+
+		// Use Lua script for atomic check-and-delete
 		String luaScript =
 				"if redis.call('get', KEYS[1]) == ARGV[1] then " +
 						"return redis.call('del', KEYS[1]) " +

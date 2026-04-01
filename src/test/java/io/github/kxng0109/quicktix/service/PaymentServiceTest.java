@@ -441,8 +441,10 @@ public class PaymentServiceTest {
 	public void processRefundForCancelledEvent_should_refundAndCancelBooking_when_paymentIsCompleted() {
 		payment.setStatus(PaymentStatus.COMPLETED);
 		when(paymentGateway.refundTransaction(anyString())).thenReturn(true);
+		when(paymentRepository.findById(paymentId))
+				.thenReturn(Optional.ofNullable(payment));
 
-		paymentService.processRefundForCancelledEvent(payment);
+		paymentService.processRefundForCancelledEvent(payment.getId());
 
 		assertEquals(PaymentStatus.REFUNDED, payment.getStatus());
 		assertNotNull(payment.getPaidAt());
@@ -455,8 +457,10 @@ public class PaymentServiceTest {
 	@Test
 	public void processRefundForCancelledEvent_should_doNothing_when_paymentIsNotCompleted() {
 		payment.setStatus(PaymentStatus.PENDING);
+		when(paymentRepository.findById(paymentId))
+				.thenReturn(Optional.of(payment));
 
-		paymentService.processRefundForCancelledEvent(payment);
+		paymentService.processRefundForCancelledEvent(payment.getId());
 
 		assertEquals(PaymentStatus.PENDING, payment.getStatus());
 
@@ -469,9 +473,11 @@ public class PaymentServiceTest {
 	public void processRefundForCancelledEvent_should_throwPaymentFailedException_when_gatewayFails() {
 		payment.setStatus(PaymentStatus.COMPLETED);
 		when(paymentGateway.refundTransaction(anyString())).thenReturn(false);
+		when(paymentRepository.findById(paymentId))
+				.thenReturn(Optional.of(payment));
 
 		assertThrows(PaymentFailedException.class, () ->
-				paymentService.processRefundForCancelledEvent(payment)
+				paymentService.processRefundForCancelledEvent(payment.getId())
 		);
 
 		assertEquals(PaymentStatus.COMPLETED, payment.getStatus());

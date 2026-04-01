@@ -179,8 +179,8 @@ public class VenueControllerTest {
 		       .andExpect(jsonPath("$.content.length()").value(1))
 		       .andExpect(jsonPath("$.content[0].id").value(venueId))
 		       .andExpect(jsonPath("$.content[0].name").value(request.name()))
-		       .andExpect(jsonPath("$.totalElements").value(1))
-		       .andExpect(jsonPath("$.size").value(1));
+		       .andExpect(jsonPath("$.page.totalElements").value(1))
+		       .andExpect(jsonPath("$.page.size").value(1));
 	}
 
 	@Test

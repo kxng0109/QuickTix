@@ -60,8 +60,8 @@ public class VenueIntegrationTest extends BaseIntegrationTest {
 		       .andExpect(status().isOk())
 		       .andExpect(jsonPath("$.content").isArray())
 		       .andExpect(jsonPath("$.content.length()").value(2))
-		       .andExpect(jsonPath("$.totalElements").value(5))
-		       .andExpect(jsonPath("$.totalPages").value(3));
+		       .andExpect(jsonPath("$.page.totalElements").value(5))
+		       .andExpect(jsonPath("$.page.totalPages").value(3));
 	}
 
 	@Test
@@ -76,6 +76,6 @@ public class VenueIntegrationTest extends BaseIntegrationTest {
 		mockMvc.perform(get("/api/v1/venues/city/{city}", "Lagos"))
 		       .andExpect(status().isOk())
 		       .andExpect(jsonPath("$.content.length()").value(2))
-		       .andExpect(jsonPath("$.totalElements").value(2));
+		       .andExpect(jsonPath("$.page.totalElements").value(2));
 	}
 }

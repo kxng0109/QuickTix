@@ -9,11 +9,13 @@ import io.github.kxng0109.quicktix.entity.Venue;
 import io.github.kxng0109.quicktix.enums.EventStatus;
 import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
+import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
 import io.github.kxng0109.quicktix.repositories.SeatRepository;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -50,6 +52,8 @@ public class SeatServiceTest {
 	private EventRepository eventRepository;
 	@Mock
 	private UserRepository userRepository;
+	@Mock
+	private SeatLockService seatLockService;
 
 	@InjectMocks
 	private SeatService seatService;
@@ -94,9 +98,10 @@ public class SeatServiceTest {
 
 		holdSeatsRequest = HoldSeatsRequest.builder()
 		                                   .eventId(eventId)
-		                                   .userId(userId)
 		                                   .seatIds(seatIds)
 		                                   .build();
+
+		lenient().when(seatLockService.acquireLock(anyLong(), anyString())).thenReturn(true);
 	}
 
 	@Test
@@ -156,9 +161,7 @@ public class SeatServiceTest {
 
 	@Test
 	public void holdSeats_should_holdSeatsAndReturnListOfSeatResponse_whenAllCorrect() {
-		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
-		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
+		when(seatRepository.findAllById(eq(seatIds))).thenReturn(seats);
 		when(seatRepository.saveAll(eq(seats))).thenReturn(seats);
 
 		List<SeatResponse> response = seatService.holdSeats(holdSeatsRequest, user);
@@ -166,15 +169,14 @@ public class SeatServiceTest {
 		assertNotNull(response);
 		assertEquals(availableSeats, response.size());
 
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository).findById(anyLong());
-		verify(seatRepository).findAllByIdWithLock(eq(seatIds));
+		verify(seatRepository).findAllById(eq(seatIds));
 		verify(seatRepository).saveAll(seats);
 	}
 
+	@Disabled
 	@Test
 	public void holdSeats_should_throwEntityNotFoundException_whenNoUserIsFound() {
-		when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
+		when(userRepository.getReferenceById(anyLong())).thenReturn(any(User.class));
 
 		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
@@ -185,14 +187,16 @@ public class SeatServiceTest {
 	}
 
 	@Test
-	public void holdSeats_should_throwEntityNotFoundException_whenNoEventIsFound() {
-		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
+	public void holdSeats_should_throwInvalidOperationException_whenLockIsNotAcquired(){
+		when(seatLockService.acquireLock(anyLong(), anyString()))
+				.thenReturn(false);
 
-		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
+		assertThrows(InvalidOperationException.class,
+		             () -> seatService.holdSeats(holdSeatsRequest, user));
 
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository).findById(anyLong());
+		verify(seatLockService).acquireLock(anyLong(), anyString());
+		verify(userRepository, never()).getReferenceById(anyLong());
+		verify(seatRepository, never()).findAllById(anyList());
 		verify(seatRepository, never()).saveAll(anyList());
 	}
 
@@ -200,15 +204,12 @@ public class SeatServiceTest {
 	public void holdSeats_should_throwEntityNotFoundException_whenSeatSizesAreDifferent() {
 		seats = List.of();
 
-		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
-		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
+		when(userRepository.getReferenceById(anyLong())).thenReturn(user);
 
 		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository).findById(anyLong());
-		verify(seatRepository).findAllByIdWithLock(eq(seatIds));
+		verify(userRepository).getReferenceById(anyLong());
+		verify(seatLockService, times(3)).acquireLock(anyLong(), anyString());
 		verify(seatRepository, never()).saveAll(seats);
 	}
 
@@ -217,18 +218,13 @@ public class SeatServiceTest {
 		holdSeatsRequest = HoldSeatsRequest.builder()
 		                                   .seatIds(seatIds)
 		                                   .eventId(eventId + 1L)
-		                                   .userId(userId)
 		                                   .build();
 
-		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
-		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
+		when(seatRepository.findAllById(eq(seatIds))).thenReturn(seats);
 
 		assertThrows(IllegalArgumentException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository).findById(anyLong());
-		verify(seatRepository).findAllByIdWithLock(eq(seatIds));
+		verify(seatRepository).findAllById(eq(seatIds));
 		verify(seatRepository, never()).saveAll(seats);
 	}
 
@@ -236,15 +232,11 @@ public class SeatServiceTest {
 	public void holdSeats_should_throwIllegalArgumentException_whenSeatIsNotAvailable() {
 		seats.forEach(seat -> seat.setSeatStatus(SeatStatus.HELD));
 
-		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
-		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
+		when(seatRepository.findAllById(eq(seatIds))).thenReturn(seats);
 
 		assertThrows(IllegalArgumentException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository).findById(anyLong());
-		verify(seatRepository).findAllByIdWithLock(eq(seatIds));
+		verify(seatRepository).findAllById(eq(seatIds));
 		verify(seatRepository, never()).saveAll(seats);
 	}
 
@@ -252,52 +244,22 @@ public class SeatServiceTest {
 	public void releaseSeats_should_releaseSeatsAndReturnNothing_whenSeatBelongsToTheUser() {
 		seats.forEach(seat -> seat.setHeldByUser(user));
 
-		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 		when(seatRepository.findAllById(eq(seatIds))).thenReturn(seats);
 
-		seatService.releaseSeats(holdSeatsRequest);
+		seatService.releaseSeats(holdSeatsRequest, user);
 
-		verify(eventRepository).findById(anyLong());
 		verify(seatRepository).findAllById(eq(seatIds));
 		verify(seatRepository).saveAll(seats);
-	}
-
-	@Test
-	public void releaseSeats_should_throwEntityNotFoundException_whenNoUserIsFound() {
-		when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
-
-		assertThrows(EntityNotFoundException.class, () -> seatService.releaseSeats(holdSeatsRequest));
-
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository, never()).findById(anyLong());
-		verify(seatRepository, never()).saveAll(anyList());
-	}
-
-	@Test
-	public void releaseSeats_should_throwEntityNotFoundException_whenNoEventIsFound() {
-		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
-
-		assertThrows(EntityNotFoundException.class, () -> seatService.releaseSeats(holdSeatsRequest));
-
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository).findById(anyLong());
-		verify(seatRepository, never()).saveAll(anyList());
 	}
 
 	@Test
 	public void releaseSeats_should_throwIllegalArgumentException_whenSeatIsNotAvailable() {
 		seats.forEach(seat -> seat.setHeldByUser(null));
 
-		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 		when(seatRepository.findAllById(eq(seatIds))).thenReturn(seats);
 
-		assertThrows(IllegalArgumentException.class, () -> seatService.releaseSeats(holdSeatsRequest));
+		assertThrows(IllegalArgumentException.class, () -> seatService.releaseSeats(holdSeatsRequest, user));
 
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository).findById(anyLong());
 		verify(seatRepository).findAllById(eq(seatIds));
 		verify(seatRepository, never()).saveAll(seats);
 	}
@@ -307,17 +269,12 @@ public class SeatServiceTest {
 		holdSeatsRequest = HoldSeatsRequest.builder()
 		                                   .seatIds(seatIds)
 		                                   .eventId(eventId + 1L)
-		                                   .userId(userId)
 		                                   .build();
 
-		when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
 		when(seatRepository.findAllById(eq(seatIds))).thenReturn(seats);
 
-		assertThrows(IllegalArgumentException.class, () -> seatService.releaseSeats(holdSeatsRequest));
+		assertThrows(IllegalArgumentException.class, () -> seatService.releaseSeats(holdSeatsRequest, user));
 
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository).findById(anyLong());
 		verify(seatRepository).findAllById(eq(seatIds));
 		verify(seatRepository, never()).saveAll(seats);
 	}

@@ -123,7 +123,7 @@ public class SeatService {
 
                 seat.setHeldAt(Instant.now());
                 seat.setHeldByUser(user);
-                log.debug("Seat held by user with email: {}", user.getEmail());
+                log.debug("Seat held by user with email: {}", currentUser.getEmail());
                 seat.setSeatStatus(SeatStatus.HELD);
             }
 

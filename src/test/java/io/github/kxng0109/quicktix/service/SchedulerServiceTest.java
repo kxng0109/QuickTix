@@ -94,12 +94,12 @@ public class SchedulerServiceTest {
 		when(eventRepository.findByStatus(EventStatus.CANCELLED))
 				.thenReturn(List.of(cancelledEvent));
 
-		when(paymentRepository.findAllCompletedPaymentsForEvent(eventId))
+		when(paymentRepository.findByBooking_EventIdAndStatus(eventId, PaymentStatus.COMPLETED))
 				.thenReturn(List.of(stuckPayment));
 
 		schedulerService.retryFailedRefunds();
 
-		verify(paymentService).processRefundForCancelledEvent(stuckPayment);
+		verify(paymentService).processRefundForCancelledEvent(stuckPayment.getId());
 	}
 
 	@Test
@@ -109,12 +109,12 @@ public class SchedulerServiceTest {
 		when(eventRepository.findByStatus(EventStatus.CANCELLED))
 				.thenReturn(List.of(cancelledEvent));
 
-		when(paymentRepository.findAllCompletedPaymentsForEvent(10L))
+		when(paymentRepository.findByBooking_EventIdAndStatus(10L, PaymentStatus.COMPLETED))
 				.thenReturn(Collections.emptyList());
 
 		schedulerService.retryFailedRefunds();
 
-		verify(paymentService, never()).processRefundForCancelledEvent(any());
+		verify(paymentService, never()).processRefundForCancelledEvent(anyLong());
 	}
 
 	@Test
@@ -124,16 +124,16 @@ public class SchedulerServiceTest {
 		Payment payment2 = Payment.builder().id(102L).build();
 
 		when(eventRepository.findByStatus(EventStatus.CANCELLED)).thenReturn(List.of(event));
-		when(paymentRepository.findAllCompletedPaymentsForEvent(1L))
+		when(paymentRepository.findByBooking_EventIdAndStatus(1L, PaymentStatus.COMPLETED))
 				.thenReturn(List.of(payment1, payment2));
 
 		doThrow(new RuntimeException("Gateway Error"))
-				.when(paymentService).processRefundForCancelledEvent(payment1);
+				.when(paymentService).processRefundForCancelledEvent(payment1.getId());
 
 		schedulerService.retryFailedRefunds();
 
-		verify(paymentService).processRefundForCancelledEvent(payment1);
-		verify(paymentService).processRefundForCancelledEvent(payment2);
+		verify(paymentService).processRefundForCancelledEvent(payment1.getId());
+		verify(paymentService).processRefundForCancelledEvent(payment2.getId());
 	}
 
 	@Test

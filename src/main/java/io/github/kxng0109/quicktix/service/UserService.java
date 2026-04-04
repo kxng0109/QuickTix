@@ -9,12 +9,16 @@ import io.github.kxng0109.quicktix.repositories.UserRepository;
 import io.github.kxng0109.quicktix.utils.AssertOwnershipOrAdmin;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
 	private final UserRepository userRepository;
@@ -68,6 +72,7 @@ public class UserService {
 		return buildUserResponse(savedUser);
 	}
 
+	//Actually just deactivates the account
 	@Transactional
 	public void deleteUser(User currentUser) {
 		User user = userRepository.findByEmail(currentUser.getEmail())
@@ -82,10 +87,33 @@ public class UserService {
 					"Cannot delete user with existing bookings. Deactivate the account instead.");
 		}
 
-		//TODO: Don't hard delete users
-		userRepository.delete(user);
+		deactivateUser(user);
 	}
 
+	/**
+	 * Forcibly deactivates a user account while preserving database referential integrity.
+	 * <p>
+	 * In enterprise systems, hard-deleting a user who possesses financial records (Bookings, Payments)
+	 * will trigger severe foreign key constraint violations. Instead, this method performs a GDPR-compliant "Soft Delete":
+	 * <ul>
+	 * <li>Scrambles all Personally Identifiable Information (PII) including email, name, and phone.</li>
+	 * <li>Replaces the password hash with an un-hashable UUID to mathematically prevent future logins.</li>
+	 * <li>Sets the {@code isActive} flag to {@code false}, which Spring Security uses to block authentication.</li>
+	 * </ul>
+	 * </p>
+	 *
+	 * @param userId The unique identifier of the user to be deactivated.
+	 * @throws EntityNotFoundException if the user ID does not exist.
+	 */
+	@Transactional
+	public void forceDeleteUser(Long userId){
+		User user = userRepository.findById(userId)
+		                          .orElseThrow(
+				                          () -> new EntityNotFoundException("User not found with ID: " + userId)
+		                          );
+
+		deactivateUser(user);
+	}
 
 	@Transactional(readOnly = true)
 	User getUserEntityById(long userId) {
@@ -93,6 +121,24 @@ public class UserService {
 		                     .orElseThrow(
 				                     () -> new EntityNotFoundException("User not found with id: " + userId)
 		                     );
+	}
+
+
+	private void deactivateUser(User user){
+		String userEmail = String.format(
+				"deleted_%s@quicktix.internal",
+				UUID.randomUUID()
+		);
+
+		user.setEmail(userEmail);
+		user.setPasswordHash(UUID.randomUUID().toString());
+		user.setFirstName("Deleted");
+		user.setLastName("User");
+		user.setPhoneNumber(null);
+		user.setActive(false);
+
+		userRepository.save(user);
+		log.info("User with ID {} deactivated", user.getId());
 	}
 
 	private UserResponse buildUserResponse(User user) {

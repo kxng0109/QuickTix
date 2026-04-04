@@ -238,21 +238,16 @@ public class UserServiceTest {
 		User currentUser = User.builder()
 		                       .id(userId)
 		                       .email(userEmail)
+				.bookings(List.of())
 		                       .build();
 
-		User existingUser = User.builder()
-		                        .id(userId)
-		                        .email(userEmail)
-		                        .bookings(List.of())
-		                        .build();
-
 		when(userRepository.findByEmail(userEmail))
-				.thenReturn(Optional.of(existingUser));
+				.thenReturn(Optional.of(currentUser));
 
 		userService.deleteUser(currentUser);
 
 		verify(userRepository).findByEmail(userEmail);
-		verify(userRepository).delete(existingUser);
+		verify(userRepository).save(any(User.class));
 	}
 
 	@Test
@@ -271,7 +266,7 @@ public class UserServiceTest {
 		);
 
 		verify(userRepository).findByEmail(userEmail);
-		verify(userRepository, never()).delete(any(User.class));
+		verify(userRepository, never()).save(any(User.class));
 	}
 
 	@Test
@@ -279,16 +274,11 @@ public class UserServiceTest {
 		User currentUser = User.builder()
 		                       .id(userId)
 		                       .email(userEmail)
+		                       .bookings(List.of(new Booking()))
 		                       .build();
 
-		User userWithBookings = User.builder()
-		                            .id(userId)
-		                            .email(userEmail)
-		                            .bookings(List.of(new Booking()))
-		                            .build();
-
 		when(userRepository.findByEmail(userEmail))
-				.thenReturn(Optional.of(userWithBookings));
+				.thenReturn(Optional.of(currentUser));
 
 		ResourceInUseException ex = assertThrows(
 				ResourceInUseException.class,
@@ -298,6 +288,54 @@ public class UserServiceTest {
 		assertEquals("Cannot delete user with existing bookings. Deactivate the account instead.", ex.getMessage());
 
 		verify(userRepository).findByEmail(userEmail);
-		verify(userRepository, never()).delete(any(User.class));
+		verify(userRepository, never()).save(any(User.class));
+	}
+
+	@Test
+	public void forceDeleteUser_should_returnNothing_whenUserExists() {
+		User currentUser = User.builder()
+		                       .id(userId)
+		                       .email(userEmail)
+		                       .bookings(List.of())
+		                       .build();
+
+		when(userRepository.findById(userId))
+				.thenReturn(Optional.of(currentUser));
+
+		userService.forceDeleteUser(userId);
+
+		verify(userRepository).findById(userId);
+		verify(userRepository).save(any(User.class));
+	}
+
+	@Test
+	public void forceDeleteUser_should_throwEntityNotFoundException_whenUserDoesNotExist() {
+		when(userRepository.findById(userId))
+				.thenReturn(Optional.empty());
+
+		assertThrows(
+				EntityNotFoundException.class,
+				() -> userService.forceDeleteUser(userId)
+		);
+
+		verify(userRepository).findById(userId);
+		verify(userRepository, never()).save(any(User.class));
+	}
+
+	@Test
+	public void forceDeleteUser_should_stillDeactivateUser_whenUserHasBookings() {
+		User currentUser = User.builder()
+		                       .id(userId)
+		                       .email(userEmail)
+		                       .bookings(List.of(new Booking()))
+		                       .build();
+
+		when(userRepository.findById(userId))
+				.thenReturn(Optional.of(currentUser));
+
+		userService.forceDeleteUser(userId);
+
+		verify(userRepository).findById(userId);
+		verify(userRepository).save(any(User.class));
 	}
 }

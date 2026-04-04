@@ -146,7 +146,7 @@ public class UserController {
 		return new ResponseEntity<>(userService.updateUser(request, currentUser), HttpStatus.OK);
 	}
 
-	/*@Operation(
+	@Operation(
 			summary = "Update user by ID (ADMIN ONLY)",
 			description = "Updates an existing user's details by ID. Accessible only to administrators. " +
 					"If email is changed, the new email must be unique."
@@ -171,7 +171,7 @@ public class UserController {
 			@AuthenticationPrincipal User currentUser
 	) {
 		return new ResponseEntity<>(userService.updateUserById(id, request, currentUser), HttpStatus.OK);
-	}*/
+	}
 
 	@Operation(
 			summary = "Delete current authenticated user",

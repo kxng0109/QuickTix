@@ -58,6 +58,10 @@ public class User implements UserDetails {
 	@Column(name = "phone_number", length = 15)
 	private String phoneNumber;
 
+	@Column(name = "is_active", nullable = false)
+	@Builder.Default
+	private boolean isActive = true;
+
 	@OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
 	private List<Booking> bookings;
 
@@ -103,8 +107,8 @@ public class User implements UserDetails {
 		return email;
 	}
 
-	//We aren't implementing any of the features below
-	//So they all will return true
+	//We aren't implementing some of the features below
+	//So some will return true
 
 	/**
 	 * Indicates whether the user's account has expired. An expired account cannot be
@@ -149,6 +153,6 @@ public class User implements UserDetails {
 	 */
 	@Override
 	public boolean isEnabled() {
-		return true;
+		return isActive;
 	}
 }

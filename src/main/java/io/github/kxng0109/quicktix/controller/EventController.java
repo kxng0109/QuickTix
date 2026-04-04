@@ -162,7 +162,7 @@ public class EventController {
 		return ResponseEntity.ok(eventService.getEventsByDateRange(request, pageable));
 	}
 
-	/*@Operation(
+	@Operation(
 			summary = "Update event",
 			description = """
 					Updates an existing event's details. Note:
@@ -183,5 +183,5 @@ public class EventController {
 			@Valid @RequestBody CreateEventRequest request
 	) {
 		return ResponseEntity.ok(eventService.updateEventById(id, request));
-	}*/
+	}
 }

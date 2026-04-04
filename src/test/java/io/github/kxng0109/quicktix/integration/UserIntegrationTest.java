@@ -6,7 +6,6 @@ import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -59,7 +58,6 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		       .andExpect(status().isNotFound());
 	}
 
-	@Disabled
 	@Test
 	void updateUserById_shouldModifyUserInDatabase_whenRequestIsValid() throws Exception {
 		CreateUserRequest updateRequest = CreateUserRequest.builder()

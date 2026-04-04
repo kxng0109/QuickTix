@@ -2,10 +2,8 @@ package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.HoldSeatsRequest;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
-import io.github.kxng0109.quicktix.entity.Event;
-import io.github.kxng0109.quicktix.entity.Seat;
-import io.github.kxng0109.quicktix.entity.User;
-import io.github.kxng0109.quicktix.entity.Venue;
+import io.github.kxng0109.quicktix.entity.*;
+import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.EventStatus;
 import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
@@ -81,6 +79,9 @@ public class SeatServiceTest {
 			Seat seat = Seat.builder()
 			                .id(seatIds.get(i))
 			                .seatStatus(SeatStatus.AVAILABLE)
+					.booking(Booking.builder().status(BookingStatus.CONFIRMED).build())
+					.seatNumber(i)
+					.rowName("A")
 			                .event(event)
 			                .build();
 
@@ -173,19 +174,6 @@ public class SeatServiceTest {
 		verify(seatRepository).saveAll(seats);
 	}
 
-	@Disabled
-	@Test
-	public void holdSeats_should_throwEntityNotFoundException_whenNoUserIsFound() {
-		when(userRepository.getReferenceById(anyLong())).thenReturn(any(User.class));
-
-		assertThrows(EntityNotFoundException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
-
-		verify(userRepository).findById(anyLong());
-		verify(eventRepository, never()).findById(anyLong());
-		verify(seatRepository, never()).findByEventId(anyLong(), any(Pageable.class));
-		verify(seatRepository, never()).saveAll(seats);
-	}
-
 	@Test
 	public void holdSeats_should_throwInvalidOperationException_whenLockIsNotAcquired(){
 		when(seatLockService.acquireLock(anyLong(), anyString()))
@@ -238,6 +226,20 @@ public class SeatServiceTest {
 
 		verify(seatRepository).findAllById(eq(seatIds));
 		verify(seatRepository, never()).saveAll(seats);
+	}
+
+	@Test
+	public void adminReleaseSeats_should_releaseSeatsAndReturnNothing_whenSeatBelongsToTheUser() {
+		seats.forEach(seat -> seat.setHeldByUser(user));
+
+		when(seatRepository.findAllById(eq(seatIds)))
+				.thenReturn(seats);
+
+		seatService.releaseSeats(seatIds);
+
+		verify(seatRepository).findAllById(eq(seatIds));
+		verify(seatLockService, times(seatIds.size())).forceReleaseLock(anyLong());
+		verify(seatRepository).saveAll(seats);
 	}
 
 	@Test

@@ -106,6 +106,7 @@ public class PaymentServiceTest {
 		                 .build();
 
 		booking.setPayment(payment);
+		lenient().when(paymentGateway.refundTransaction(transferReference)).thenReturn(true);
 	}
 
 	@Test
@@ -291,18 +292,13 @@ public class PaymentServiceTest {
 	public void refundPayment_should_refundPaymentAndReturnNothing_when_paymentStatusIsCompleted() {
 		payment.setStatus(PaymentStatus.COMPLETED);
 
-		when(bookingRepository.findById(anyLong()))
-				.thenReturn(Optional.of(booking));
 		when(paymentRepository.findByBookingId(anyLong()))
 				.thenReturn(Optional.of(payment));
-		when(paymentGateway.refundTransaction(anyString()))
-				.thenReturn(true);
 
 		paymentService.refundPayment(bookingId);
 
 		assertEquals(PaymentStatus.REFUNDED, payment.getStatus());
 
-		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
 		verify(paymentGateway).refundTransaction(anyString());
 		verify(paymentRepository).save(any(Payment.class));
@@ -311,25 +307,6 @@ public class PaymentServiceTest {
 
 	@Test
 	public void refundPayment_should_throwEntityNotFoundException_when_bookingIsNotFound() {
-		when(bookingRepository.findById(anyLong()))
-				.thenReturn(Optional.empty());
-
-		assertThrows(
-				EntityNotFoundException.class,
-				() -> paymentService.refundPayment(bookingId)
-		);
-
-		verify(bookingRepository).findById(anyLong());
-		verify(paymentRepository, never()).findByBookingId(anyLong());
-		verify(paymentGateway, never()).refundTransaction(anyString());
-		verify(paymentRepository, never()).save(any(Payment.class));
-		verify(bookingService, never()).cancelRefundedBooking(anyLong());
-	}
-
-	@Test
-	public void refundPayment_should_throwEntityNotFoundException_when_paymentIsNotFound() {
-		when(bookingRepository.findById(anyLong()))
-				.thenReturn(Optional.of(booking));
 		when(paymentRepository.findByBookingId(anyLong()))
 				.thenReturn(Optional.empty());
 
@@ -338,7 +315,6 @@ public class PaymentServiceTest {
 				() -> paymentService.refundPayment(bookingId)
 		);
 
-		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
 		verify(paymentGateway, never()).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
@@ -349,8 +325,6 @@ public class PaymentServiceTest {
 	public void refundPayment_should_throwInvalidOperationException_when_paymentStatusIsRefunded() {
 		payment.setStatus(PaymentStatus.REFUNDED);
 
-		when(bookingRepository.findById(anyLong()))
-				.thenReturn(Optional.of(booking));
 		when(paymentRepository.findByBookingId(anyLong()))
 				.thenReturn(Optional.of(payment));
 
@@ -361,7 +335,6 @@ public class PaymentServiceTest {
 
 		assertEquals("Payment has already been refunded", ex.getMessage());
 
-		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
 		verify(paymentGateway, never()).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
@@ -370,8 +343,6 @@ public class PaymentServiceTest {
 
 	@Test
 	public void refundPayment_should_throwInvalidOperationException_when_paymentStatusIsPending() {
-		when(bookingRepository.findById(anyLong()))
-				.thenReturn(Optional.of(booking));
 		when(paymentRepository.findByBookingId(anyLong()))
 				.thenReturn(Optional.of(payment));
 
@@ -382,7 +353,6 @@ public class PaymentServiceTest {
 
 		assertEquals("Cannot refund payment if payment was not completed.", ex.getMessage());
 
-		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
 		verify(paymentGateway, never()).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
@@ -393,8 +363,6 @@ public class PaymentServiceTest {
 	public void refundPayment_should_throwInvalidOperationException_when_paymentStatusIsFailed() {
 		payment.setStatus(PaymentStatus.FAILED);
 
-		when(bookingRepository.findById(anyLong()))
-				.thenReturn(Optional.of(booking));
 		when(paymentRepository.findByBookingId(anyLong()))
 				.thenReturn(Optional.of(payment));
 
@@ -405,7 +373,6 @@ public class PaymentServiceTest {
 
 		assertEquals("Cannot refund payment if payment was not completed.", ex.getMessage());
 
-		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
 		verify(paymentGateway, never()).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
@@ -416,8 +383,6 @@ public class PaymentServiceTest {
 	public void refundPayment_should_throwPaymentFailedException_when_refundFailed() {
 		payment.setStatus(PaymentStatus.COMPLETED);
 
-		when(bookingRepository.findById(anyLong()))
-				.thenReturn(Optional.of(booking));
 		when(paymentRepository.findByBookingId(anyLong()))
 				.thenReturn(Optional.of(payment));
 		when(paymentGateway.refundTransaction(anyString()))
@@ -430,7 +395,6 @@ public class PaymentServiceTest {
 
 		assertEquals("Refund failed at gateway.", ex.getMessage());
 
-		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository).findByBookingId(anyLong());
 		verify(paymentGateway).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));

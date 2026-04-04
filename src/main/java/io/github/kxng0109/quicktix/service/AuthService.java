@@ -39,7 +39,8 @@ public class AuthService {
 		                .email(request.email())
 		                .passwordHash(passwordEncoder.encode(request.password()))
 		                .phoneNumber(phoneNumber)
-		                .role(Role.USER) //Um, is this actually needed?
+		                .role(Role.USER)
+						.isActive(true)
 		                .build();
 
 		User newUser = userRepository.save(user);

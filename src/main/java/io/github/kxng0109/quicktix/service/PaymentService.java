@@ -143,19 +143,29 @@ public class PaymentService {
 		notificationPublisherService.publishNotification(receipt);
 	}
 
+	/**
+	 * Refunds a customer's completed booking and releases their reserved seats.
+	 * <p>
+	 * It communicates directly
+	 * with the configured payment gateway (e.g., Stripe/Paystack) to reverse the financial transaction, marks
+	 * the internal payment state as {@link PaymentStatus#REFUNDED}, and delegates to the
+	 * {@link BookingService} to cancel the booking and free the associated seats.
+	 * </p>
+	 *
+	 * @param bookingId The unique identifier of the booking to refund.
+	 * @throws InvalidOperationException if the payment is not in a {@code COMPLETED} state.
+	 * @throws PaymentFailedException    if the external payment gateway rejects the refund request.
+	 * @throws EntityNotFoundException   if no payment is attached to the provided booking ID.
+	 */
 	@Transactional
 	public void refundPayment(Long bookingId) {
-		bookingRepository.findById(bookingId)
-		                 .orElseThrow(
-				                 () -> new EntityNotFoundException("Booking not found")
-		                 );
-
 		Payment payment = paymentRepository.findByBookingId(bookingId)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Payment not found")
 		                                   );
 
 		if (payment.getStatus() == PaymentStatus.REFUNDED) {
+			log.error("Booking with ID {} already refunded!", bookingId);
 			throw new InvalidOperationException("Payment has already been refunded");
 		}
 
@@ -174,6 +184,7 @@ public class PaymentService {
 		paymentRepository.save(payment);
 
 		bookingService.cancelRefundedBooking(bookingId);
+		log.info("User with booking {} refunded", bookingId);
 	}
 
 	/**
@@ -187,7 +198,7 @@ public class PaymentService {
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void processRefundForCancelledEvent(Long paymentId) {
 		Payment payment = paymentRepository.findById(paymentId)
-				.orElseThrow(() -> new EntityNotFoundException("Payment not found!"));
+		                                   .orElseThrow(() -> new EntityNotFoundException("Payment not found!"));
 		if (payment.getStatus() != PaymentStatus.COMPLETED) return;
 
 		log.debug("Processing refund for Payment ID: {}", payment.getId());

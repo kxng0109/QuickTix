@@ -15,7 +15,6 @@ import io.github.kxng0109.quicktix.service.JwtService;
 import io.github.kxng0109.quicktix.service.SeatService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -490,7 +489,6 @@ public class EventControllerTest {
 		verify(eventService, never()).getEventsByDateRange(any(EventDateSearchRequest.class), any(Pageable.class));
 	}
 
-	@Disabled
 	@Test
 	public void updateEventById_should_return200OkAndEventResponse_whenRequestIsValid() throws Exception {
 		when(eventService.updateEventById(anyLong(), any(CreateEventRequest.class)))
@@ -507,7 +505,6 @@ public class EventControllerTest {
 		       .andExpect(jsonPath("$.name").value(request.name()));
 	}
 
-	@Disabled
 	@Test
 	public void updateEventById_should_return400BadRequest_whenRequestIsInvalid() throws Exception {
 		mockMvc.perform(
@@ -524,7 +521,6 @@ public class EventControllerTest {
 		verify(eventService, never()).updateEventById(anyLong(), any(CreateEventRequest.class));
 	}
 
-	@Disabled
 	@Test
 	public void updateEventById_should_return400BadRequest_whenIdIsInvalid() throws Exception {
 		mockMvc.perform(
@@ -539,7 +535,6 @@ public class EventControllerTest {
 		verify(eventService, never()).updateEventById(anyLong(), any(CreateEventRequest.class));
 	}
 
-	@Disabled
 	@Test
 	public void updateEventById_should_return404NotFound_whenEventIsNotFound() throws Exception {
 		doThrow(EntityNotFoundException.class)

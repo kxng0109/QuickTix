@@ -5,6 +5,7 @@ import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.entity.Event;
 import io.github.kxng0109.quicktix.entity.Seat;
 import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
@@ -159,6 +160,38 @@ public class SeatService {
         }
 
         seatRepository.saveAll(seats);
+    }
+
+    /**
+     * Forcibly resets a batch of seats to an {@link SeatStatus#AVAILABLE} state,
+     * clearing all database allocations and destroying any lingering Redis locks.
+     * <p>
+     * This administrative override is used to un-jam seats that remain in a {@link SeatStatus#HELD}
+     * state despite the expiration of their corresponding Redis TTL. This method triggers a cache eviction
+     * for the "availableSeats" cache to ensure frontend clients immediately see the freed capacity.
+     * </p>
+     *
+     * @param seatIds A list of unique seat identifiers to forcefully reset.
+     */
+    @CacheEvict(value = "availableSeats", allEntries = true)
+    public void releaseSeats(List<Long> seatIds){
+        try{
+            List<Seat> seats = seatRepository.findAllById(seatIds);
+            for(Seat seat : seats){
+                seatLockService.forceReleaseLock(seat.getId());
+
+                seat.setSeatStatus(SeatStatus.AVAILABLE);
+                seat.getBooking().setStatus(BookingStatus.CANCELLED);
+                seat.setBooking(null);
+                seat.setHeldAt(null);
+                seat.setHeldByUser(null);
+            }
+
+            seatRepository.saveAll(seats);
+        } catch (Exception e) {
+            log.error("An issue occurred when trying to release seats: {}.", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Transactional

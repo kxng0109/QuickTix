@@ -14,7 +14,6 @@ import io.github.kxng0109.quicktix.service.JwtService;
 import io.github.kxng0109.quicktix.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -265,7 +264,6 @@ public class UserControllerTest {
 		       .andExpect(jsonPath("$.path").value("/api/v1/users/me"));
 	}
 
-	@Disabled
 	@Test
 	public void updateUserById_should_return200OkAndUserResponse_whenUserExists() throws Exception {
 		when(userService.updateUserById(anyLong(), any(CreateUserRequest.class), any(User.class)))
@@ -282,7 +280,6 @@ public class UserControllerTest {
 		       .andExpect(jsonPath("$.id").value(userId));
 	}
 
-	@Disabled
 	@Test
 	public void updateUserById_should_return400BadRequest_whenIdIsInvalid() throws Exception {
 		mockMvc.perform(
@@ -297,7 +294,6 @@ public class UserControllerTest {
 		verify(userService, never()).updateUserById(anyLong(), any(CreateUserRequest.class), any(User.class));
 	}
 
-	@Disabled
 	@Test
 	public void updateUserById_should_return400BadRequest_whenBodyIsInvalid() throws Exception {
 		mockMvc.perform(
@@ -311,7 +307,6 @@ public class UserControllerTest {
 		verify(userService, never()).updateUserById(anyLong(), any(CreateUserRequest.class), any(User.class));
 	}
 
-	@Disabled
 	@Test
 	public void updateUserById_should_return404NotFound_whenUserDoesNotExist() throws Exception {
 		String uriTemplate = "/api/v1/users/" + userId;
@@ -329,7 +324,6 @@ public class UserControllerTest {
 		       .andExpect(jsonPath("$.path").value(uriTemplate));
 	}
 
-	@Disabled
 	@Test
 	public void updateUserById_should_return409Conflict_whenNewEmailAlreadyExists() throws Exception {
 		String uriTemplate = "/api/v1/users/" + userId;

@@ -42,16 +42,16 @@ public class SeatLockService {
 	 *
 	 * @param seatId    The unique identifier of the seat to lock.
 	 * @param userEmail The email address of the user attempting to acquire the lock.
-	 * This is stored as the value to verify ownership during release.
+	 *                  This is stored as the value to verify ownership during release.
 	 * @return {@code true} if the lock was successfully acquired; {@code false} if the seat is already locked.
 	 */
-	public boolean acquireLock(Long seatId, String userEmail){
+	public boolean acquireLock(Long seatId, String userEmail) {
 		String lockKey = LOCK_PREFIX + seatId;
 
 		Boolean acquired = redisTemplate.opsForValue()
-				.setIfAbsent(lockKey, userEmail, Duration.ofMinutes(LOCK_TTL_MINUTES));
+		                                .setIfAbsent(lockKey, userEmail, Duration.ofMinutes(LOCK_TTL_MINUTES));
 
-		if(acquired.equals(Boolean.TRUE)){
+		if (acquired.equals(Boolean.TRUE)) {
 			log.debug("Lock acquired for seat {} by {}", seatId, userEmail);
 			return true;
 		}
@@ -71,7 +71,7 @@ public class SeatLockService {
 	 * @param seatId    The unique identifier of the locked seat.
 	 * @param userEmail The email address of the user attempting to release the lock.
 	 */
-	public void releaseLock(Long seatId, String userEmail){
+	public void releaseLock(Long seatId, String userEmail) {
 		String lockKey = LOCK_PREFIX + seatId;
 
 		// Use Lua script for atomic check-and-delete
@@ -89,5 +89,23 @@ public class SeatLockService {
 		);
 
 		log.debug("Lock release attempted for seat {} by {}", seatId, userEmail);
+	}
+
+	/**
+	 * Forcibly releases a distributed lock for a specific seat, bypassing all ownership validation.
+	 * <p>
+	 * <b>WARNING:</b> This is an administrative "God-Mode" operation. Unlike {@link #releaseLock(Long, String)},
+	 * this method does not check if the current user owns the lock. It directly deletes the key from Redis.
+	 * This is designed to resolve infrastructure anomalies where a lock is orphaned due to a network partition
+	 * or application crash.
+	 * </p>
+	 *
+	 * @param seatId The unique identifier of the seat whose lock must be destroyed.
+	 */
+	public void forceReleaseLock(Long seatId) {
+		String lockKey = LOCK_PREFIX + seatId;
+		redisTemplate.delete(lockKey);
+
+		log.info("Redis lock for seat {} forcefully release", seatId);
 	}
 }

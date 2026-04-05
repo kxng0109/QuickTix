@@ -30,4 +30,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 	List<Event> findEventsToComplete(@Param("statuses") List<EventStatus> statuses, @Param("now") Instant now);
 
 	List<Event> findByStatus(EventStatus status);
+
+	long countAllByStatus(EventStatus status);
 }

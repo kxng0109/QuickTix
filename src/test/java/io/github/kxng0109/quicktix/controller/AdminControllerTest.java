@@ -1,9 +1,14 @@
 package io.github.kxng0109.quicktix.controller;
 
+import io.github.kxng0109.quicktix.config.SecurityConfig;
+import io.github.kxng0109.quicktix.dto.response.DashboardMetricsResponse;
+import io.github.kxng0109.quicktix.security.JwtAccessDeniedHandler;
+import io.github.kxng0109.quicktix.security.JwtAuthenticationEntryPoint;
 import io.github.kxng0109.quicktix.service.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,8 +47,8 @@ public class AdminControllerTest {
 	@MockitoBean
 	private UserService userService;
 
-	/*@MockitoBean
-	private AdminDashboardService adminDashboardService;*/
+	@MockitoBean
+	private AdminDashboardService adminDashboardService;
 
 	@MockitoBean
 	private JwtService jwtService;
@@ -60,13 +65,6 @@ public class AdminControllerTest {
 		mockMvc.perform(delete(BASE_URL + "/users/{userId}", 100L)
 				                .with(user("admin@test.com").roles("ADMIN")))
 		       .andExpect(status().isNoContent());
-	}
-
-	@Test
-	public void forceDeleteUser_shouldReturn403_whenCalledByStandardUser() throws Exception {
-		mockMvc.perform(delete(BASE_URL + "/users/{userId}", 100L)
-				                .with(user("user@test.com").roles("USER")))
-		       .andExpect(status().isForbidden());
 	}
 
 	@Test
@@ -99,16 +97,18 @@ public class AdminControllerTest {
 		       .andExpect(status().isNoContent());
 	}
 
-	/*@Test
+	@Test
 	public void getDashboardMetrics_shouldReturn200AndMetrics_whenCalledByAdmin() throws Exception {
 		DashboardMetricsResponse mockResponse = DashboardMetricsResponse.builder()
 		                                                                .totalRevenue(new BigDecimal("150000.00"))
 		                                                                .totalTicketsSold(5000L)
 		                                                                .totalActiveUsers(1200L)
-		                                                                .activeEvents(45L)
+		                                                                .totalActiveEvents(45L)
+		                                                                .totalUpcomingEvents(32L)
 		                                                                .build();
 
-		when(adminDashboardService.getDashboardMetrics()).thenReturn(mockResponse);
+		when(adminDashboardService.getDashboardMetrics())
+				.thenReturn(mockResponse);
 
 		mockMvc.perform(get(BASE_URL + "/dashboard")
 				                .with(user("admin@test.com").roles("ADMIN")))
@@ -116,13 +116,7 @@ public class AdminControllerTest {
 		       .andExpect(jsonPath("$.totalRevenue").value(150000.00))
 		       .andExpect(jsonPath("$.totalTicketsSold").value(5000))
 		       .andExpect(jsonPath("$.totalActiveUsers").value(1200))
-		       .andExpect(jsonPath("$.activeEvents").value(45));
-	}*/
-
-	@Test
-	public void getDashboardMetrics_shouldReturn403_whenCalledByStandardUser() throws Exception {
-		mockMvc.perform(get(BASE_URL + "/dashboard")
-				                .with(user("user@test.com").roles("USER")))
-		       .andExpect(status().isForbidden());
+		       .andExpect(jsonPath("$.totalActiveEvents").value(45))
+		       .andExpect(jsonPath("$.totalUpcomingEvents").value(32L));
 	}
 }

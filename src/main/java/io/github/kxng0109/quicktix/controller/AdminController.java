@@ -1,5 +1,6 @@
 package io.github.kxng0109.quicktix.controller;
 
+import io.github.kxng0109.quicktix.dto.response.DashboardMetricsResponse;
 import io.github.kxng0109.quicktix.service.*;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class AdminController {
 	private final SeatService seatService;
 	private final PaymentService paymentService;
 	private final UserService userService;
+	private final AdminDashboardService adminDashboardService;
 
 	/**
 	 * Forcibly deactivates a user account and scrambles their Personally Identifiable Information (PII).
@@ -113,17 +115,17 @@ public class AdminController {
 		return ResponseEntity.noContent().build();
 	}
 
-//	/**
-//	 * Retrieves high-level, aggregated platform metrics for the executive dashboard.
-//	 * <p>
-//	 * This endpoint executes highly optimized JPQL aggregation queries to calculate total revenue,
-//	 * user counts, and active events directly at the database level, completely avoiding Java memory overhead.
-//	 * </p>
-//	 *
-//	 * @return 200 OK containing the compiled {@link DashboardMetricsResponse}.
-//	 */
-//	@GetMapping("/dashboard")
-//	public ResponseEntity<DashboardMetricsResponse> getDashboardMetrics() {
-//		return ResponseEntity.ok(adminDashboardService.getDashboardMetrics());
-//	}
+	/**
+	 * Retrieves high-level, aggregated platform metrics for the executive dashboard.
+	 * <p>
+	 * This endpoint executes highly optimized JPQL aggregation queries to calculate total revenue,
+	 * user counts, and active events directly at the database level, completely avoiding Java memory overhead.
+	 * </p>
+	 *
+	 * @return 200 OK containing the compiled {@link DashboardMetricsResponse}.
+	 */
+	@GetMapping("/dashboard")
+	public ResponseEntity<DashboardMetricsResponse> getDashboardMetrics() {
+		return ResponseEntity.ok(adminDashboardService.getDashboardMetrics());
+	}
 }

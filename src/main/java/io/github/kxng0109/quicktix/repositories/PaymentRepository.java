@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,4 +20,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	//Using it to get all payments for an event in order to do something like
 	//issue a refund for canceled events
 	List<Payment> findByBooking_EventIdAndStatus(Long eventId, PaymentStatus status);
+
+	@Query("SELECT SUM(p.amount) FROM Payment p WHERE p.status = :status")
+	BigDecimal calculateTotalRevenue(@Param("status") PaymentStatus status);
 }

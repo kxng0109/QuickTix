@@ -32,4 +32,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 	Optional<Booking> findByIdWithSeats(@Param("id") Long id);
 
 	List<Booking> findByEventIdAndStatus(Long eventId, BookingStatus status);
+
+	@Query("SELECT COUNT(s) FROM Booking b JOIN b.seats s WHERE b.status = :status")
+	long countTicketsSold(@Param("status") BookingStatus status);
 }

@@ -19,6 +19,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Central security configuration for the QuickTix API.
+ * <p>
+ * This configuration establishes a purely stateless, RESTful security architecture using JSON Web Tokens (JWT).
+ * It disables session creation and CSRF protection (which are unnecessary for stateless APIs),
+ * registers the custom {@link JwtAuthenticationFilter} to intercept requests, and defines the global
+ * Authorization routing rules (whitelisting Swagger, Auth, and Webhooks, while securing Domains).
+ * </p>
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity

@@ -12,6 +12,15 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
+/**
+ * Configuration for OpenAPI 3.0 documentation generation (Swagger UI).
+ * <p>
+ * Defines the global metadata, server environments, and API tagging structure used to generate
+ * the interactive API documentation. It establishes the foundational descriptions for all
+ * major domains (Users, Venues, Events, Seats, Bookings, Payments) to provide clear
+ * integration guidelines for frontend developers.
+ * </p>
+ */
 @Configuration
 public class OpenApiConfig {
 

@@ -22,6 +22,20 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+/**
+ * Global background task orchestrator for the QuickTix platform.
+ * <p>
+ * Utilizes Spring's {@code @Scheduled} mechanics to run asynchronous maintenance jobs.
+ * Responsible for garbage collection and state transitions, including:
+ * <ul>
+ * <li>Releasing orphaned Redis seat holds after 15 minutes.</li>
+ * <li>Expiring abandoned pending bookings.</li>
+ * <li>Updating event statuses based on elapsed time.</li>
+ * <li>Retrying failed gateway refunds for cancelled events.</li>
+ * <li>Dispatching 24-hour reminder notifications to attendees via RabbitMQ.</li>
+ * </ul>
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j

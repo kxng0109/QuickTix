@@ -15,6 +15,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Service responsible for user identity and access management.
+ * <p>
+ * Handles the registration of new users and the authentication of existing users,
+ * delegating credential verification to Spring Security's {@link AuthenticationManager}
+ * and token generation to the {@link JwtService}.
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -25,6 +33,17 @@ public class AuthService {
 	private final UserRepository userRepository;
 
 
+	/**
+	 * Registers a new user in the system.
+	 * <p>
+	 * Verifies that the email is not already in use, securely hashes the user's password,
+	 * and assigns the default {@link Role#USER} role. The account is activated by default.
+	 * </p>
+	 *
+	 * @param request The DTO containing the user's registration details.
+	 * @return An {@link AuthResponse} containing the generated JWT token and user details.
+	 * @throws UserExistsException if a user with the provided email already exists.
+	 */
 	@Transactional
 	public AuthResponse handleRegistration(CreateUserRequest request) {
 		if (userRepository.existsByEmail(request.email())) {
@@ -47,6 +66,17 @@ public class AuthService {
 		return buildAuthResponse(newUser);
 	}
 
+	/**
+	 * Authenticates a user's login credentials.
+	 * <p>
+	 * Leverages Spring Security's AuthenticationManager to securely compare the provided
+	 * password against the stored bcrypt hash. If successful, generates a new JWT token.
+	 * </p>
+	 *
+	 * @param request The DTO containing the user's email and plaintext password.
+	 * @return An {@link AuthResponse} containing the new JWT token and user details.
+	 * @throws org.springframework.security.authentication.BadCredentialsException if the password does not match.
+	 */
 	@Transactional(readOnly = true)
 	public AuthResponse handleLogin(LoginRequest request) {
 		UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

@@ -51,6 +51,18 @@ public class PaymentService {
 
 	//Its job is just to start the payment,
 	// particularly creating and saving the Payment object.
+	/**
+	 * Initializes a payment sequence for a pending booking.
+	 * <p>
+	 * Verifies that the payment amount matches the secure backend calculation of the booking,
+	 * creates a {@link Payment} record in a {@code PENDING} state, and delegates to the
+	 * external {@link PaymentGateway} to generate a client secret / checkout URL.
+	 * </p>
+	 *
+	 * @param request     The payload containing the booking ID and payment method.
+	 * @param currentUser The authenticated user initiating the payment.
+	 * @return A {@link PaymentResponse} containing the gateway's client secret.
+	 */
 	@Transactional
 	public PaymentResponse initializePayment(PaymentRequest request, User currentUser) {
 		Booking booking = bookingRepository.findById(request.bookingId())

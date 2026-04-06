@@ -15,6 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Objects;
 
+/**
+ * Exception thrown during registration or profile updates when a requested unique identifier
+ * (such as an email address) is already claimed by another account.
+ * <p>
+ * Prevents unique constraint violations in the database and signals to the client that
+ * they must provide alternative credentials or initiate a password reset.
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminDashboardService {
@@ -24,6 +32,15 @@ public class AdminDashboardService {
 	private final UserRepository userRepository;
 	private final EventRepository eventRepository;
 
+	/**
+	 * Compiles the current state of the ticketing platform into a single metrics payload.
+	 * <p>
+	 * Automatically handles null safeguards for revenue calculations if the database contains
+	 * no completed transactions.
+	 * </p>
+	 *
+	 * @return A {@link DashboardMetricsResponse} containing total revenue, ticket sales, user counts, and active events.
+	 */
 	@Transactional(readOnly = true)
 	public DashboardMetricsResponse getDashboardMetrics() {
 		BigDecimal totalRevenue = Objects.requireNonNullElse(

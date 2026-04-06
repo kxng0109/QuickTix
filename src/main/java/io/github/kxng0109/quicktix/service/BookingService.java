@@ -26,6 +26,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Core service managing the entire lifecycle of ticket bookings.
+ * <p>
+ * This service handles the creation of pending bookings, dynamic price calculations,
+ * booking confirmations after payment, and both user-initiated and system-initiated cancellations.
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 public class BookingService {
@@ -37,6 +44,19 @@ public class BookingService {
 	private final SeatService seatService;
 	private final SeatLockService seatLockService;
 
+	/**
+	 * Retrieves a specific booking by its internal database ID.
+	 * <p>
+	 * Enforces strict authorization by verifying through {@link AssertOwnershipOrAdmin} that the requesting
+	 * user either legitimately owns the booking or possesses system-wide administrative privileges.
+	 * </p>
+	 *
+	 * @param bookId      The unique internal identifier of the booking.
+	 * @param currentUser The currently authenticated user making the request.
+	 * @return A {@link BookingResponse} detailing the booking and its associated seats.
+	 * @throws EntityNotFoundException if the requested booking ID does not exist.
+	 * @throws org.springframework.security.access.AccessDeniedException if the user lacks ownership or admin rights.
+	 */
 	@Transactional(readOnly = true)
 	public BookingResponse getBookingById(Long bookId, User currentUser) {
 		Booking booking = bookingRepository.findById(bookId)
@@ -49,6 +69,19 @@ public class BookingService {
 		return buildBookingResponse(booking);
 	}
 
+	/**
+	 * Retrieves a specific booking using its human-readable public reference code.
+	 * <p>
+	 * Primarily utilized for customer support lookups or order tracking. It enforces the exact same
+	 * strict ownership and authorization constraints as ID-based retrieval.
+	 * </p>
+	 *
+	 * @param bookingReference The unique public alphanumeric reference (e.g., "QT-A9K4P2").
+	 * @param currentUser      The currently authenticated user making the request.
+	 * @return A {@link BookingResponse} detailing the booking and its associated seats.
+	 * @throws EntityNotFoundException if no booking matches the provided reference string.
+	 * @throws org.springframework.security.access.AccessDeniedException if the user lacks ownership or admin rights.
+	 */
 	@Transactional(readOnly = true)
 	public BookingResponse getBookingByReference(String bookingReference, User currentUser) {
 		Booking booking = bookingRepository.findByBookingReference(bookingReference)
@@ -62,6 +95,20 @@ public class BookingService {
 		return buildBookingResponse(booking);
 	}
 
+	/**
+	 * Retrieves a paginated history of all bookings associated with a specific user account.
+	 * <p>
+	 * Verifies that the user attempting to access the list is either the target account owner
+	 * or a system administrator, preventing lateral data scraping by standard users.
+	 * </p>
+	 *
+	 * @param userId      The ID of the user whose booking history is being queried.
+	 * @param pageable    Pagination metadata (page number, page size, sort parameters).
+	 * @param currentUser The currently authenticated user making the request.
+	 * @return A paginated {@link Page} of {@link BookingResponse} objects.
+	 * @throws EntityNotFoundException if the target user account does not exist.
+	 * @throws org.springframework.security.access.AccessDeniedException if the user lacks ownership or admin rights.
+	 */
 	@Transactional(readOnly = true)
 	public Page<BookingResponse> getBookingsByUser(Long userId, Pageable pageable, User currentUser) {
 		User user = userRepository.findById(userId)
@@ -76,6 +123,20 @@ public class BookingService {
 		return bookings.map(this::buildBookingResponse);
 	}
 
+	/**
+	 * Initializes a new pending booking for a user.
+	 * <p>
+	 * <b>Security Note:</b> This method calculates the {@code totalAmount} strictly on the backend
+	 * by multiplying the event's ticket price by the number of valid, user-held seats. It completely
+	 * ignores any pricing data sent from the frontend to prevent manipulation.
+	 * </p>
+	 *
+	 * @param request     The payload containing the Event ID and requested Seat IDs.
+	 * @param currentUser The authenticated user initiating the booking.
+	 * @return A {@link BookingResponse} detailing the pending booking and the generated reference code.
+	 * @throws EntityNotFoundException if the event or requested seats do not exist.
+	 * @throws IllegalStateException   if the requested seats are not currently held by the user in Redis.
+	 */
 	@Transactional
 	public BookingResponse createPendingBooking(InitiateBookingRequest request, User currentUser) {
 		Event event = eventRepository.findById(request.eventId())
@@ -92,7 +153,7 @@ public class BookingService {
 		);
 
 		BigDecimal calculatedTotalAmount = event.getTicketPrice()
-				.multiply(BigDecimal.valueOf(seats.size()));
+		                                        .multiply(BigDecimal.valueOf(seats.size()));
 
 		Booking booking = Booking.builder()
 		                         .user(currentUser)
@@ -113,6 +174,16 @@ public class BookingService {
 		return buildBookingResponse(savedBooking);
 	}
 
+	/**
+	 * Confirms a pending booking after a successful payment transaction.
+	 * <p>
+	 * Transitions the booking state to {@link BookingStatus#CONFIRMED} and permanently
+	 * assigns the reserved seats to the user (updating seat status to {@link SeatStatus#BOOKED}).
+	 * </p>
+	 *
+	 * @param bookingId The unique identifier of the booking to confirm.
+	 * @throws InvalidOperationException if the booking is not PENDING or if the payment is missing/incomplete.
+	 */
 	@Transactional
 	public void confirmBooking(Long bookingId) {
 		Booking booking = bookingRepository.findByIdWithPayment(bookingId)
@@ -142,6 +213,17 @@ public class BookingService {
 		bookingRepository.save(booking);
 	}
 
+	/**
+	 * Allows a user to manually cancel a pending booking.
+	 * <p>
+	 * <b>Note:</b> Currently restricts the cancellation of {@code CONFIRMED} bookings. Confirmed
+	 * bookings must be cancelled via administrative support to trigger the necessary financial refunds.
+	 * </p>
+	 *
+	 * @param bookingId   The ID of the booking to cancel.
+	 * @param currentUser The user attempting the cancellation (checked for ownership).
+	 * @throws InvalidOperationException if the booking is already confirmed or cancelled.
+	 */
 	@Transactional
 	public void cancelBooking(Long bookingId, User currentUser) {
 		Booking booking = bookingRepository.findById(bookingId)
@@ -213,6 +295,18 @@ public class BookingService {
 	}
 
 	//When the booking expires or the event is cancelled
+	/**
+	 * INTERNAL USE ONLY.
+	 * Processes a batch cancellation of pending or abandoned bookings.
+	 * <p>
+	 * Iterates through the provided list, transitioning each booking to an {@link BookingStatus#EXPIRED} state.
+	 * It systematically communicates with the {@link SeatLockService} to gracefully release any lingering
+	 * Redis distributed locks, detaches the seats from the booking, and returns them to the global
+	 * {@link SeatStatus#AVAILABLE} pool for immediate resale.
+	 * </p>
+	 *
+	 * @param expiredBookings A list of bookings that have timed out during checkout or belong to a cancelled event.
+	 */
 	private void handleBookingCancellation(List<Booking> expiredBookings) {
 		if (expiredBookings.isEmpty()) return;
 
@@ -237,6 +331,17 @@ public class BookingService {
 	}
 
 	//Booking cancelled by user, or successfully refunded
+	/**
+	 * INTERNAL USE ONLY.
+	 * Processes the cancellation of a single booking, typically initiated by the user or triggered by a gateway refund.
+	 * <p>
+	 * Transitions the specific booking to a {@link BookingStatus#CANCELLED} state. It safely destroys the
+	 * associated Redis seat locks, wipes the temporary user hold metadata, and restores the physical seats
+	 * to the {@link SeatStatus#AVAILABLE} pool.
+	 * </p>
+	 *
+	 * @param booking The specific booking entity to be cancelled.
+	 */
 	private void handleBookingCancellation(Booking booking) {
 		booking.setStatus(BookingStatus.CANCELLED);
 
@@ -278,6 +383,18 @@ public class BookingService {
 		                      .build();
 	}
 
+	/**
+	 * INTERNAL USE ONLY.
+	 * Generates a cryptographically secure, collision-resistant public reference code for a new booking.
+	 * <p>
+	 * Utilizes a randomized generation strategy and verifies uniqueness against the database.
+	 * To prevent thread-blocking infinite loops in a highly saturated database environment,
+	 * it enforces a maximum of 4 generation attempts before explicitly failing.
+	 * </p>
+	 *
+	 * @return A guaranteed unique, human-readable alphanumeric booking reference string.
+	 * @throws IllegalStateException if a unique reference cannot be generated after the maximum number of retries.
+	 */
 	private String generateUniqueBookingReference() {
 		int maxRetries = 4;
 		int tries = 0;

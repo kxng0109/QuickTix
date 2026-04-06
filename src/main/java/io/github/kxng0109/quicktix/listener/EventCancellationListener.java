@@ -14,6 +14,15 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * Asynchronous event listener for handling the aftermath of an event cancellation.
+ * <p>
+ * Decouples the immediate HTTP response of the Admin cancellation request from the
+ * heavy, time-consuming process of refunding transactions. It operates in a separate thread,
+ * fetching all completed payments for the cancelled event and delegating them to the
+ * {@link PaymentService} for individual processing.
+ * </p>
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -23,6 +32,16 @@ public class EventCancellationListener {
 	private final PaymentService paymentService;
 	private final BookingService bookingService;
 
+	/**
+	 * Intercepts the {@link EventCancelledEvent} and begins the mass-refund protocol.
+	 * <p>
+	 * Iterates through all successful payments associated with the event and attempts
+	 * a gateway refund. It also triggers the expiration of any lingering pending bookings
+	 * to free up database and Redis resources.
+	 * </p>
+	 *
+	 * @param event The record containing the ID of the cancelled event.
+	 */
 	@Async
 	@EventListener
 	public void handleEventCancellation(EventCancelledEvent event) {

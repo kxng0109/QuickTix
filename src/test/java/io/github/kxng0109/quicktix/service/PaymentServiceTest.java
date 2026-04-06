@@ -10,7 +10,6 @@ import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.PaymentMethod;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import io.github.kxng0109.quicktix.enums.Role;
-import io.github.kxng0109.quicktix.exception.InvalidAmountException;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;

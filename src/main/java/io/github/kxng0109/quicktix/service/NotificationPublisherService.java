@@ -8,6 +8,15 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * Asynchronous messaging producer for the notification system.
+ * <p>
+ * Formats and dispatches {@link NotificationRequest} payloads to a RabbitMQ exchange.
+ * By offloading email and SMS generation to a message broker, it ensures that the main
+ * HTTP request threads (like booking confirmations) remain highly responsive and are not
+ * blocked by slow third-party email APIs.
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j

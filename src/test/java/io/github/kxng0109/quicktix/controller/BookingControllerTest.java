@@ -68,8 +68,7 @@ public class BookingControllerTest {
 	public void setup() {
 		request = InitiateBookingRequest.builder()
 		                                .eventId(20L)
-		                                .seats(List.of(10L, 11L))
-		                                .totalAmount(totalAmount)
+		                                .seatIds(List.of(10L, 11L))
 		                                .build();
 
 		response = BookingResponse.builder()
@@ -119,7 +118,7 @@ public class BookingControllerTest {
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.eventId").value("Event ID is required"))
-		       .andExpect(jsonPath("$.seats").value("Seats are required"));
+		       .andExpect(jsonPath("$.seatIds").value("Seats are required"));
 
 		verify(bookingService, never()).createPendingBooking(any(InitiateBookingRequest.class), any(User.class));
 	}

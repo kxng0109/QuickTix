@@ -60,7 +60,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/venues/**").hasRole("ADMIN")
 						.requestMatchers(HttpMethod.DELETE, "/api/v1/venues/**").hasRole("ADMIN")
 
-						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+						.requestMatchers("/api/v1/internal/admin/**").hasRole("ADMIN")
 						.anyRequest().authenticated()
 				)
 				.sessionManagement(

@@ -27,13 +27,6 @@ public record InitiateBookingRequest(
 				requiredMode = Schema.RequiredMode.REQUIRED
 		)
 		@NotNull(message = "Seats are required")
-		List<@NotNull(message = "A seat is required") Long> seats,
-
-		@Schema(
-				description = "Total amount for the booking. Must match seat count multiplied by ticket price.",
-				example = "45000.00",
-				requiredMode = Schema.RequiredMode.REQUIRED
-		)
-		BigDecimal totalAmount
+		List<@NotNull(message = "A seat is required") Long> seatIds
 ) {
 }

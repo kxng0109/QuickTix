@@ -64,7 +64,6 @@ public class PaymentControllerTest {
 		Long bookingId = 1L;
 		request = PaymentRequest.builder()
 		                        .bookingId(bookingId)
-		                        .amount(amount)
 		                        .paymentMethod(paymentMethod)
 		                        .build();
 
@@ -111,7 +110,6 @@ public class PaymentControllerTest {
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.bookingId").value("Booking ID is required"))
-		       .andExpect(jsonPath("$.amount").value("Amount is required"))
 		       .andExpect(jsonPath("$.paymentMethod").value("Payment method is required"));
 
 		verify(paymentService, never()).initializePayment(any(PaymentRequest.class), any(User.class));

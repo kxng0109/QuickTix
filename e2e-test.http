@@ -105,8 +105,7 @@ Content-Type: application/json
 
 {
   "eventId": {{event_id}},
-  "seats": [{{seat_id}}],
-  "totalAmount": 45000.00
+  "seats": [{{seat_id}}]
 }
 
 > {%
@@ -120,7 +119,6 @@ Content-Type: application/json
 
 {
   "bookingId": {{booking_id}},
-  "amount": 45000.00,
   "paymentMethod": "Credit Card"
 }
 

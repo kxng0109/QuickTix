@@ -42,6 +42,16 @@ public class GlobalExceptionHandler {
 		return buildErrorResponse(ex, request, status);
 	}
 
+	@ExceptionHandler(IllegalStateException.class)
+	public ResponseEntity<ErrorResponse> handleIllegalStateException(
+			IllegalStateException ex,
+			HttpServletRequest request
+	) {
+		HttpStatus status = HttpStatus.BAD_REQUEST;
+
+		return buildErrorResponse(ex, request, status);
+	}
+
 	@ExceptionHandler(EntityNotFoundException.class)
 	public ResponseEntity<ErrorResponse> handleEntityNotFoundException(
 			EntityNotFoundException ex,

@@ -141,8 +141,7 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 
 		InitiateBookingRequest bookingRequest = InitiateBookingRequest.builder()
 		                                                              .eventId(eventId)
-		                                                              .seats(seatIds)
-		                                                              .totalAmount(totalAmount)
+		                                                              .seatIds(seatIds)
 		                                                              .build();
 
 		MvcResult bookingResult = mockMvc.perform(post("/api/v1/bookings")
@@ -359,9 +358,7 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 				                                          .content(objectMapper.writeValueAsString(
 						                                          InitiateBookingRequest.builder()
 						                                                                .eventId(eventId)
-						                                                                .seats(seatIds)
-						                                                                .totalAmount(BigDecimal.valueOf(
-								                                                                4000))
+						                                                                .seatIds(seatIds)
 						                                                                .build())))
 		                                 .andExpect(status().isCreated())
 		                                 .andReturn();

@@ -8,7 +8,6 @@ import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
-import io.github.kxng0109.quicktix.exception.InvalidAmountException;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
@@ -68,9 +67,6 @@ public class PaymentService {
 		}
 
 		BigDecimal totalAmount = booking.getTotalAmount();
-		if (totalAmount.compareTo(request.amount()) != 0) {
-			throw new InvalidAmountException("Payment amount mismatch");
-		}
 
 		String transferReference = UUID.randomUUID().toString();
 		Payment payment = Payment.builder()

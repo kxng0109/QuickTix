@@ -46,7 +46,6 @@ public class PaymentServiceTest {
 	private final PaymentMethod paymentMethod = PaymentMethod.BANK_TRANSFER;
 	private final PaymentRequest request = PaymentRequest.builder()
 	                                                     .bookingId(bookingId)
-	                                                     .amount(totalAmount)
 	                                                     .paymentMethod(paymentMethod)
 	                                                     .build();
 
@@ -223,24 +222,6 @@ public class PaymentServiceTest {
 				InvalidOperationException.class,
 				() -> paymentService.initializePayment(request, user)
 		);
-
-		verify(bookingRepository).findById(anyLong());
-		verify(paymentRepository, never()).save(any(Payment.class));
-	}
-
-	@Test
-	public void initializePayment_should_throwInvalidAmountException_when_paymentAmountMismatch() {
-		booking.setTotalAmount(totalAmount.add(BigDecimal.valueOf(10)));
-
-		when(bookingRepository.findById(anyLong()))
-				.thenReturn(Optional.of(booking));
-
-		InvalidAmountException ex = assertThrows(
-				InvalidAmountException.class,
-				() -> paymentService.initializePayment(request, user)
-		);
-
-		assertEquals("Payment amount mismatch", ex.getMessage());
 
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository, never()).save(any(Payment.class));

@@ -22,15 +22,6 @@ public record PaymentRequest(
 		Long bookingId,
 
 		@Schema(
-				description = "Payment amount. Must exactly match the booking total amount.",
-				example = "45000.00",
-				requiredMode = Schema.RequiredMode.REQUIRED
-		)
-		@NotNull(message = "Amount is required")
-		@Positive(message = "Amount must be positive")
-		BigDecimal amount,
-
-		@Schema(
 				description = "Payment method to use",
 				example = "CREDIT_CARD",
 				requiredMode = Schema.RequiredMode.REQUIRED,

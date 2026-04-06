@@ -35,6 +35,26 @@ public class SeatService {
     private final UserRepository userRepository;
     private final SeatLockService seatLockService;
 
+    /**
+     * Retrieves a paginated list of available seats for a specific event.
+     * <p>
+     * This method is transactional and read-only, ensuring data consistency without modifying the database state.
+     * It leverages Redis caching with synchronous updates to improve performance by avoiding repeated database queries
+     * when multiple requests are made for the same event and page number.
+     * </p>
+     * <p>
+     * The cache key combines the event ID and page number, ensuring that only relevant cache entries are invalidated
+     * when seats become unavailable (e.g., during seat holding operations).
+     * </p>
+     *
+     * @param eventId The unique identifier of the event for which to retrieve available seats.
+     *                If not found, an {@link EntityNotFoundException} will be thrown.
+     * @param pageable Pagination metadata including page number and size.
+     *                 Use {@code PageRequest.of(pageNumber, pageSize)} to create a valid instance.
+     * @return A paginated list of seat responses containing available seats for the specified event.
+     *         Each response includes the seat ID, seat number, row name, and status display name.
+     * @throws EntityNotFoundException if the event with the given ID does not exist in the database.
+     */
     @Transactional(readOnly = true)
     @Cacheable(value = "availableSeats", key = "#eventId + '-' + #pageable.pageNumber", sync = true)
     public Page<SeatResponse> getAvailableSeats(Long eventId, Pageable pageable) {
@@ -181,7 +201,6 @@ public class SeatService {
                 seatLockService.forceReleaseLock(seat.getId());
 
                 seat.setSeatStatus(SeatStatus.AVAILABLE);
-                seat.getBooking().setStatus(BookingStatus.CANCELLED);
                 seat.setBooking(null);
                 seat.setHeldAt(null);
                 seat.setHeldByUser(null);
@@ -217,6 +236,7 @@ public class SeatService {
         seatRepository.saveAll(expiredSeats);
     }
 
+    @Transactional(readOnly = true)
     public List<Seat> validateAndGetHeldSeats(List<Long> seatIds, Long userId, Long eventId) {
         List<Seat> seats = seatRepository.findAllById(seatIds);
 

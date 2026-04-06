@@ -139,8 +139,7 @@ public class BookingServiceTest {
 
 		bookingRequest = InitiateBookingRequest.builder()
 		                                       .eventId(eventId)
-		                                       .seats(List.of(seat1Id, seat2Id))
-		                                       .totalAmount(booking.getTotalAmount())
+		                                       .seatIds(List.of(seat1Id, seat2Id))
 		                                       .build();
 	}
 
@@ -276,8 +275,6 @@ public class BookingServiceTest {
 	public void createPendingBooking_should_createBookingAndReturnBookingResponse_whenEverythingIsValidAndAvailable() {
 		when(eventRepository.findById(anyLong()))
 				.thenReturn(Optional.of(event));
-		when(userRepository.findById(anyLong()))
-				.thenReturn(Optional.of(user));
 		when(seatService.validateAndGetHeldSeats(anyList(), anyLong(), anyLong()))
 				.thenReturn(List.of(seat1, seat2));
 		when(bookingRepository.save(any(Booking.class)))
@@ -293,7 +290,6 @@ public class BookingServiceTest {
 		assertEquals(totalAmount, response.totalAmount());
 
 		verify(eventRepository).findById(anyLong());
-		verify(userRepository).findById(anyLong());
 		verify(seatService).validateAndGetHeldSeats(anyList(), anyLong(), anyLong());
 		verify(bookingRepository).save(any(Booking.class));
 		verify(seatRepository).saveAll(anyList());
@@ -305,8 +301,6 @@ public class BookingServiceTest {
 
 		when(eventRepository.findById(anyLong()))
 				.thenReturn(Optional.of(event));
-		when(userRepository.findById(anyLong()))
-				.thenReturn(Optional.of(user));
 		when(seatService.validateAndGetHeldSeats(anyList(), anyLong(), anyLong()))
 				.thenReturn(List.of());
 		when(bookingRepository.save(any(Booking.class)))
@@ -319,7 +313,6 @@ public class BookingServiceTest {
 		assertEquals(totalAmount, response.totalAmount());
 
 		verify(eventRepository).findById(anyLong());
-		verify(userRepository).findById(anyLong());
 		verify(seatService).validateAndGetHeldSeats(anyList(), anyLong(), anyLong());
 		verify(bookingRepository).save(any(Booking.class));
 		verify(seatRepository).saveAll(anyList());
@@ -343,30 +336,9 @@ public class BookingServiceTest {
 	}
 
 	@Test
-	public void createPendingBooking_should_throwEntityNotFoundException_when_userIsNotFound() {
-		when(eventRepository.findById(anyLong()))
-				.thenReturn(Optional.of(event));
-		when(userRepository.findById(anyLong()))
-				.thenReturn(Optional.empty());
-
-		assertThrows(
-				EntityNotFoundException.class,
-				() -> bookingService.createPendingBooking(bookingRequest, user)
-		);
-
-		verify(eventRepository).findById(anyLong());
-		verify(userRepository).findById(anyLong());
-		verify(seatService, never()).validateAndGetHeldSeats(anyList(), anyLong(), anyLong());
-		verify(bookingRepository, never()).save(any(Booking.class));
-		verify(seatRepository, never()).saveAll(anyList());
-	}
-
-	@Test
 	public void createPendingBooking_should_throwEntityNotFoundException_when_seatsAreInvalid() {
 		when(eventRepository.findById(anyLong()))
 				.thenReturn(Optional.of(event));
-		when(userRepository.findById(anyLong()))
-				.thenReturn(Optional.of(user));
 		when(seatService.validateAndGetHeldSeats(anyList(), anyLong(), anyLong()))
 				.thenThrow(EntityNotFoundException.class);
 
@@ -376,7 +348,6 @@ public class BookingServiceTest {
 		);
 
 		verify(eventRepository).findById(anyLong());
-		verify(userRepository).findById(anyLong());
 		verify(seatService).validateAndGetHeldSeats(anyList(), anyLong(), anyLong());
 	}
 
@@ -384,8 +355,6 @@ public class BookingServiceTest {
 	public void createPendingBooking_should_throwIllegalArgumentException_when_seatDoesNotBelongToEvent() {
 		when(eventRepository.findById(anyLong()))
 				.thenReturn(Optional.of(event));
-		when(userRepository.findById(anyLong()))
-				.thenReturn(Optional.of(user));
 		when(seatService.validateAndGetHeldSeats(anyList(), anyLong(), anyLong()))
 				.thenThrow(IllegalArgumentException.class);
 
@@ -395,7 +364,6 @@ public class BookingServiceTest {
 		);
 
 		verify(eventRepository).findById(anyLong());
-		verify(userRepository).findById(anyLong());
 		verify(seatService).validateAndGetHeldSeats(anyList(), anyLong(), anyLong());
 	}
 
@@ -403,8 +371,6 @@ public class BookingServiceTest {
 	public void createPendingBooking_should_throwIllegalStateException_when_seatIsNotAvailable() {
 		when(eventRepository.findById(anyLong()))
 				.thenReturn(Optional.of(event));
-		when(userRepository.findById(anyLong()))
-				.thenReturn(Optional.of(user));
 		when(seatService.validateAndGetHeldSeats(anyList(), anyLong(), anyLong()))
 				.thenThrow(IllegalStateException.class);
 
@@ -414,7 +380,6 @@ public class BookingServiceTest {
 		);
 
 		verify(eventRepository).findById(anyLong());
-		verify(userRepository).findById(anyLong());
 		verify(seatService).validateAndGetHeldSeats(anyList(), anyLong(), anyLong());
 	}
 

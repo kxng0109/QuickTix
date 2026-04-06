@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,26 +83,24 @@ public class BookingService {
 				                             () -> new EntityNotFoundException("Event not found.")
 		                             );
 
-		User user = userRepository.findById(currentUser.getId())
-		                          .orElseThrow(
-				                          () -> new EntityNotFoundException("User not found.")
-		                          );
-
-		AssertOwnershipOrAdmin.check(currentUser, user);
+		AssertOwnershipOrAdmin.check(currentUser, currentUser);
 
 		List<Seat> seats = seatService.validateAndGetHeldSeats(
-				request.seats(),
+				request.seatIds(),
 				currentUser.getId(),
 				request.eventId()
 		);
 
+		BigDecimal calculatedTotalAmount = event.getTicketPrice()
+				.multiply(BigDecimal.valueOf(seats.size()));
+
 		Booking booking = Booking.builder()
-		                         .user(user)
+		                         .user(currentUser)
 		                         .event(event)
 		                         .seats(seats)
 		                         .status(BookingStatus.PENDING)
 		                         .bookingReference(generateUniqueBookingReference())
-		                         .totalAmount(request.totalAmount())
+		                         .totalAmount(calculatedTotalAmount)
 		                         .build();
 
 		Booking savedBooking = bookingRepository.save(booking);

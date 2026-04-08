@@ -162,7 +162,7 @@ public class SeatServiceTest {
 
 	@Test
 	public void holdSeats_should_holdSeatsAndReturnListOfSeatResponse_whenAllCorrect() {
-		when(seatRepository.findAllById(eq(seatIds))).thenReturn(seats);
+		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
 		when(seatRepository.saveAll(eq(seats))).thenReturn(seats);
 
 		List<SeatResponse> response = seatService.holdSeats(holdSeatsRequest, user);
@@ -170,7 +170,7 @@ public class SeatServiceTest {
 		assertNotNull(response);
 		assertEquals(availableSeats, response.size());
 
-		verify(seatRepository).findAllById(eq(seatIds));
+		verify(seatRepository).findAllByIdWithLock(eq(seatIds));
 		verify(seatRepository).saveAll(seats);
 	}
 
@@ -208,11 +208,11 @@ public class SeatServiceTest {
 		                                   .eventId(eventId + 1L)
 		                                   .build();
 
-		when(seatRepository.findAllById(eq(seatIds))).thenReturn(seats);
+		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
 
 		assertThrows(IllegalArgumentException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
-		verify(seatRepository).findAllById(eq(seatIds));
+		verify(seatRepository).findAllByIdWithLock(eq(seatIds));
 		verify(seatRepository, never()).saveAll(seats);
 	}
 
@@ -220,11 +220,11 @@ public class SeatServiceTest {
 	public void holdSeats_should_throwIllegalArgumentException_whenSeatIsNotAvailable() {
 		seats.forEach(seat -> seat.setSeatStatus(SeatStatus.HELD));
 
-		when(seatRepository.findAllById(eq(seatIds))).thenReturn(seats);
+		when(seatRepository.findAllByIdWithLock(eq(seatIds))).thenReturn(seats);
 
 		assertThrows(IllegalArgumentException.class, () -> seatService.holdSeats(holdSeatsRequest, user));
 
-		verify(seatRepository).findAllById(eq(seatIds));
+		verify(seatRepository).findAllByIdWithLock(eq(seatIds));
 		verify(seatRepository, never()).saveAll(seats);
 	}
 

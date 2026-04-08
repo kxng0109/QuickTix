@@ -10,6 +10,7 @@ import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.PaymentMethod;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import io.github.kxng0109.quicktix.enums.Role;
+import io.github.kxng0109.quicktix.exception.InvalidAmountException;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
@@ -226,12 +227,46 @@ public class PaymentServiceTest {
 		verify(paymentRepository, never()).save(any(Payment.class));
 	}
 
+	@Test
+	public void initializePayment_should_throwInvalidAmountException_when_bookingPriceIsNull(){
+		booking.setTotalAmount(null);
+
+		when(bookingRepository.findById(anyLong()))
+				.thenReturn(Optional.of(booking));
+
+		assertThrows(
+				InvalidAmountException.class,
+				() -> paymentService.initializePayment(request, user)
+		);
+
+		verify(bookingRepository).findById(anyLong());
+		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentGateway, never()).initializePayment(any(Payment.class));
+	}
+
+	@Test
+	public void initializePayment_should_throwInvalidAmountException_when_bookingPriceIsLessThanOne(){
+		booking.setTotalAmount(BigDecimal.ZERO);
+
+		when(bookingRepository.findById(anyLong()))
+				.thenReturn(Optional.of(booking));
+
+		assertThrows(
+				InvalidAmountException.class,
+				() -> paymentService.initializePayment(request, user)
+		);
+
+		verify(bookingRepository).findById(anyLong());
+		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(paymentGateway, never()).initializePayment(any(Payment.class));
+	}
+
 
 	@Test
 	public void handleSuccessfulWebhookPayment_should_updateStatusAndConfirmBooking() {
 		payment.setStatus(PaymentStatus.PENDING);
 
-		when(paymentRepository.findByBookingId(any())).thenReturn(Optional.of(payment));
+		when(paymentRepository.findByIdAndLock(any())).thenReturn(Optional.of(payment));
 
 		paymentService.handleSuccessfulWebhookPayment(1L, "pi_12345");
 
@@ -240,7 +275,7 @@ public class PaymentServiceTest {
 		assertNotNull(payment.getPaidAt());
 
 		verify(paymentRepository).save(payment);
-		verify(paymentRepository).findByBookingId(any());
+		verify(paymentRepository).findByIdAndLock(any());
 		verify(bookingService).confirmBooking(payment.getBooking().getId());
 	}
 
@@ -248,12 +283,12 @@ public class PaymentServiceTest {
 	public void handleSuccessfulWebhookPayment_should_returnEarly_when_alreadyCompleted() {
 		payment.setStatus(PaymentStatus.COMPLETED);
 
-		when(paymentRepository.findByBookingId(any()))
+		when(paymentRepository.findByIdAndLock(any()))
 				.thenReturn(Optional.of(payment));
 
 		paymentService.handleSuccessfulWebhookPayment(1L, "pi_12345");
 
-		verify(paymentRepository).findByBookingId(any());
+		verify(paymentRepository).findByIdAndLock(any());
 		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(bookingService, never()).confirmBooking(anyLong());
 	}
@@ -272,14 +307,14 @@ public class PaymentServiceTest {
 	public void refundPayment_should_refundPaymentAndReturnNothing_when_paymentStatusIsCompleted() {
 		payment.setStatus(PaymentStatus.COMPLETED);
 
-		when(paymentRepository.findByBookingId(anyLong()))
+		when(paymentRepository.findByIdAndLock(anyLong()))
 				.thenReturn(Optional.of(payment));
 
 		paymentService.refundPayment(bookingId);
 
 		assertEquals(PaymentStatus.REFUNDED, payment.getStatus());
 
-		verify(paymentRepository).findByBookingId(anyLong());
+		verify(paymentRepository).findByIdAndLock(anyLong());
 		verify(paymentGateway).refundTransaction(anyString());
 		verify(paymentRepository).save(any(Payment.class));
 		verify(bookingService).cancelRefundedBooking(anyLong());
@@ -287,7 +322,7 @@ public class PaymentServiceTest {
 
 	@Test
 	public void refundPayment_should_throwEntityNotFoundException_when_bookingIsNotFound() {
-		when(paymentRepository.findByBookingId(anyLong()))
+		when(paymentRepository.findByIdAndLock(anyLong()))
 				.thenReturn(Optional.empty());
 
 		assertThrows(
@@ -295,7 +330,7 @@ public class PaymentServiceTest {
 				() -> paymentService.refundPayment(bookingId)
 		);
 
-		verify(paymentRepository).findByBookingId(anyLong());
+		verify(paymentRepository).findByIdAndLock(anyLong());
 		verify(paymentGateway, never()).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(bookingService, never()).cancelRefundedBooking(anyLong());
@@ -305,7 +340,7 @@ public class PaymentServiceTest {
 	public void refundPayment_should_throwInvalidOperationException_when_paymentStatusIsRefunded() {
 		payment.setStatus(PaymentStatus.REFUNDED);
 
-		when(paymentRepository.findByBookingId(anyLong()))
+		when(paymentRepository.findByIdAndLock(anyLong()))
 				.thenReturn(Optional.of(payment));
 
 		InvalidOperationException ex = assertThrows(
@@ -315,7 +350,7 @@ public class PaymentServiceTest {
 
 		assertEquals("Payment has already been refunded", ex.getMessage());
 
-		verify(paymentRepository).findByBookingId(anyLong());
+		verify(paymentRepository).findByIdAndLock(anyLong());
 		verify(paymentGateway, never()).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(bookingService, never()).cancelRefundedBooking(anyLong());
@@ -323,7 +358,7 @@ public class PaymentServiceTest {
 
 	@Test
 	public void refundPayment_should_throwInvalidOperationException_when_paymentStatusIsPending() {
-		when(paymentRepository.findByBookingId(anyLong()))
+		when(paymentRepository.findByIdAndLock(anyLong()))
 				.thenReturn(Optional.of(payment));
 
 		InvalidOperationException ex = assertThrows(
@@ -333,7 +368,7 @@ public class PaymentServiceTest {
 
 		assertEquals("Cannot refund payment if payment was not completed.", ex.getMessage());
 
-		verify(paymentRepository).findByBookingId(anyLong());
+		verify(paymentRepository).findByIdAndLock(anyLong());
 		verify(paymentGateway, never()).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(bookingService, never()).cancelRefundedBooking(anyLong());
@@ -343,7 +378,7 @@ public class PaymentServiceTest {
 	public void refundPayment_should_throwInvalidOperationException_when_paymentStatusIsFailed() {
 		payment.setStatus(PaymentStatus.FAILED);
 
-		when(paymentRepository.findByBookingId(anyLong()))
+		when(paymentRepository.findByIdAndLock(anyLong()))
 				.thenReturn(Optional.of(payment));
 
 		InvalidOperationException ex = assertThrows(
@@ -353,7 +388,7 @@ public class PaymentServiceTest {
 
 		assertEquals("Cannot refund payment if payment was not completed.", ex.getMessage());
 
-		verify(paymentRepository).findByBookingId(anyLong());
+		verify(paymentRepository).findByIdAndLock(anyLong());
 		verify(paymentGateway, never()).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(bookingService, never()).cancelRefundedBooking(anyLong());
@@ -363,7 +398,7 @@ public class PaymentServiceTest {
 	public void refundPayment_should_throwPaymentFailedException_when_refundFailed() {
 		payment.setStatus(PaymentStatus.COMPLETED);
 
-		when(paymentRepository.findByBookingId(anyLong()))
+		when(paymentRepository.findByIdAndLock(anyLong()))
 				.thenReturn(Optional.of(payment));
 		when(paymentGateway.refundTransaction(anyString()))
 				.thenReturn(false);
@@ -375,7 +410,7 @@ public class PaymentServiceTest {
 
 		assertEquals("Refund failed at gateway.", ex.getMessage());
 
-		verify(paymentRepository).findByBookingId(anyLong());
+		verify(paymentRepository).findByIdAndLock(anyLong());
 		verify(paymentGateway).refundTransaction(anyString());
 		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(bookingService, never()).cancelRefundedBooking(anyLong());

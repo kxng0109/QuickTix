@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
 import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
+import io.github.kxng0109.quicktix.dto.request.projection.EventSeatCount;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
 import io.github.kxng0109.quicktix.entity.Event;
 import io.github.kxng0109.quicktix.entity.Seat;
@@ -27,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,7 +58,7 @@ public class EventService {
 		                   .build();
 
 
-		int numberOfSeats = request.numberOfSeats();
+		long numberOfSeats = request.numberOfSeats();
 		List<Seat> seats = new ArrayList<>();
 
 		for (int i = 1; i <= numberOfSeats; i++) {
@@ -96,7 +99,7 @@ public class EventService {
 				                             () -> new EntityNotFoundException("Event not found")
 		                             );
 
-		int availableSeats = (int) seatRepository.countByEventIdAndSeatStatus(event.getId(), SeatStatus.AVAILABLE);
+		long availableSeats = seatRepository.countByEventIdAndSeatStatus(event.getId(), SeatStatus.AVAILABLE);
 
 		return buildEventResponse(availableSeats, event);
 	}
@@ -159,7 +162,7 @@ public class EventService {
 
 		Event savedEvent = eventRepository.save(event);
 
-		int availableSeats = (int) seatRepository.countByEventIdAndSeatStatus(
+		long availableSeats = seatRepository.countByEventIdAndSeatStatus(
 				event.getId(),
 				SeatStatus.AVAILABLE
 		);
@@ -227,7 +230,7 @@ public class EventService {
 	}
 
 
-	private EventResponse buildEventResponse(Integer numberOfAvailableSeats, Event event) {
+	private EventResponse buildEventResponse(Long numberOfAvailableSeats, Event event) {
 		return EventResponse
 				.builder()
 				.id(event.getId())
@@ -241,8 +244,26 @@ public class EventService {
 	}
 
 	private Page<EventResponse> buildEventResponsePage(Page<Event> eventsPage) {
+		if(eventsPage == null) return null;
+
+		//Extract the ID from eventsPage
+		List<Long> eventIds = eventsPage.stream()
+		                                .map(Event::getId)
+		                                .toList();
+
+		//Convert them to a map
+		Map<Long, Long> eventSeatCountsList = seatRepository
+				.countAvailableSeatsByEventIds(eventIds, SeatStatus.AVAILABLE)
+				.stream()
+				.collect(
+						Collectors.toMap(
+								EventSeatCount::getEventId,
+								EventSeatCount::getAvailableSeats
+						)
+				);
+
 		return eventsPage.map(
-				event -> buildEventResponse(null, event)
+				event -> buildEventResponse(eventSeatCountsList.get(event.getId()), event)
 		);
 	}
 }

@@ -33,7 +33,7 @@ public record EventResponse(
 		String status,
 
 		@Schema(description = "Number of seats currently available for booking", example = "4500")
-		Integer availableSeats,
+		Long availableSeats,
 
 		@Schema(description = "Event start date and time", example = "2026-06-15T18:00:00Z")
 		Instant eventStartDateTime,

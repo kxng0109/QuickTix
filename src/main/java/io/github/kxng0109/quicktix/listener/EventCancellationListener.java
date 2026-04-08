@@ -45,25 +45,30 @@ public class EventCancellationListener {
 	@Async
 	@EventListener
 	public void handleEventCancellation(EventCancelledEvent event) {
-		Long eventId = event.eventId();
-		log.info("Starting background refund process for Event ID: {}", eventId);
+		try{
+			Long eventId = event.eventId();
+			log.info("Starting background refund process for Event ID: {}", eventId);
 
-		//Using it to get all payments for an event in order to issue a refund for canceled events
-		List<Payment> payments = paymentRepository.findByBooking_EventIdAndStatus(
-				eventId,
-				PaymentStatus.COMPLETED
-		);
-		log.info("Found {} payments for Event ID '{}' to refund", payments.size(), eventId);
+			//Using it to get all payments for an event in order to issue a refund for canceled events
+			List<Payment> payments = paymentRepository.findByBooking_EventIdAndStatus(
+					eventId,
+					PaymentStatus.COMPLETED
+			);
+			log.info("Found {} payments for Event ID '{}' to refund", payments.size(), eventId);
 
-		for (Payment payment : payments) {
-			try {
-				paymentService.processRefundForCancelledEvent(payment.getId());
-			} catch (Exception e) {
-				log.error("Failed to process refund for payment ID: {}", payment.getId(), e);
+			for (Payment payment : payments) {
+				try {
+					paymentService.processRefundForCancelledEvent(payment.getId());
+				} catch (Exception e) {
+					log.error("Failed to process refund for payment ID: {}", payment.getId(), e);
+				}
 			}
-		}
 
-		bookingService.expirePendingBookings(eventId);
-		log.info("Completed background refund process for Event ID: {}", eventId);
+			bookingService.expirePendingBookings(eventId);
+			log.info("Completed background refund process for Event ID: {}", eventId);
+		} catch (Exception e){
+			log.error("An error occured while cancelling event: {}", e.getMessage(), e);
+			throw e;
+		}
 	}
 }

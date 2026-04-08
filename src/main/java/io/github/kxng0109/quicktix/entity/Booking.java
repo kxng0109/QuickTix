@@ -44,8 +44,11 @@ public class Booking {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
-    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL)
     private Payment payment;
+
+    @Version
+    private Integer version;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

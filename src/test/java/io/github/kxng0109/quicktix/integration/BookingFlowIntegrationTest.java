@@ -83,7 +83,7 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		                                                    .eventEndDateTime(Instant.now().plus(7, ChronoUnit.DAYS)
 		                                                                             .plus(3, ChronoUnit.HOURS))
 		                                                    .ticketPrice(BigDecimal.valueOf(5000))
-		                                                    .numberOfSeats(10)
+		                                                    .numberOfSeats(10L)
 		                                                    .build();
 
 		MvcResult eventResult = mockMvc.perform(post("/api/v1/events")
@@ -210,7 +210,7 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 						                                                                                         ChronoUnit.HOURS
 						                                                                                   ))
 						                                                          .ticketPrice(BigDecimal.valueOf(1000))
-						                                                          .numberOfSeats(5)
+						                                                          .numberOfSeats(5L)
 						                                                          .build())))
 		                               .andExpect(status().isCreated())
 		                               .andReturn();
@@ -315,7 +315,7 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 						                                                                                         ChronoUnit.HOURS
 						                                                                                   ))
 						                                                          .ticketPrice(BigDecimal.valueOf(2000))
-						                                                          .numberOfSeats(5)
+						                                                          .numberOfSeats(5L)
 						                                                          .build())))
 		                               .andExpect(status().isCreated())
 		                               .andReturn();

@@ -3,6 +3,7 @@ package io.github.kxng0109.quicktix.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 import java.util.List;
@@ -26,6 +27,7 @@ public record HoldSeatsRequest(
 				requiredMode = Schema.RequiredMode.REQUIRED
 		)
 		@NotNull(message = "Seat ID's can't be null")
+		@Size(min = 1, message = "Seat ID can't be empty")
 		List<@NotNull(message = "Seat ID can't be null") @Positive(message = "Seat ID must be positive") Long> seatIds
 ) {
 }

@@ -95,7 +95,7 @@ public class SeatService {
 	/**
 	 * Temporarily holds a batch of seats for a user to prevent race conditions during checkout.
 	 * <p>
-	 * This method utilizes pessimistic locking via Redis. It first attempts to acquire an atomic lock
+	 * This method utilizes pessimistic locking via Redis and the database. It first attempts to acquire an atomic lock
 	 * for every requested seat. If successful, it verifies the database state and updates the seats
 	 * to {@link SeatStatus#HELD}. If any lock or validation fails, it safely rolls back and releases
 	 * any partially acquired Redis locks to prevent deadlocks.
@@ -147,7 +147,7 @@ public class SeatService {
 			//then use findById, if you just need a pointer to something that you know exists, then getReferenceById
 			User user = userRepository.getReferenceById(currentUser.getId());
 
-			List<Seat> seats = seatRepository.findAllById(sortedSeatIds);
+			List<Seat> seats = seatRepository.findAllByIdWithLock(sortedSeatIds);
 
 			if (seats.size() != sortedSeatIds.size()) {
 				throw new EntityNotFoundException("One or more seat IDs are invalid");
@@ -264,8 +264,11 @@ public class SeatService {
 
 		for (Seat seat : expiredSeats) {
 			String heldByEmail = seat.getHeldByUser().getEmail();
-
-			seatLockService.releaseLock(seat.getId(), heldByEmail);
+			if(heldByEmail == null){
+				log.warn("Seat with ID {} has a null email field. Can not release Redis lock!", seat.getId());
+			}else{
+				seatLockService.releaseLock(seat.getId(), heldByEmail);
+			}
 
 			seat.setHeldAt(null);
 			seat.setHeldByUser(null);

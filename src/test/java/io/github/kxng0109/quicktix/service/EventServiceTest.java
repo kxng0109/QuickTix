@@ -47,7 +47,7 @@ public class EventServiceTest {
 	private final Long eventId = 100L;
 
 	private final List<Seat> seats = new ArrayList<>();
-	private final int numberOfSeats = 3;
+	private final long numberOfSeats = 3L;
 	private final Pageable pageable = PageRequest.of(0, 10);
 
 	@Mock
@@ -217,10 +217,12 @@ public class EventServiceTest {
 
 	@Test
 	public void updateEventById_should_returnUpdatedEventResponse_whenRequestIsValid() {
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
-		when(eventRepository.save(any(Event.class))).thenAnswer(i -> i.getArgument(0));
-		when(seatRepository.countByEventIdAndSeatStatus(anyLong(), any(SeatStatus.class))).thenReturn(
-				(long) numberOfSeats);
+		when(eventRepository.findById(anyLong()))
+				.thenReturn(Optional.of(event));
+		when(eventRepository.save(any(Event.class)))
+				.thenAnswer(i -> i.getArgument(0));
+		when(seatRepository.countByEventIdAndSeatStatus(anyLong(), any(SeatStatus.class)))
+				.thenReturn(numberOfSeats);
 
 		EventResponse response = eventService.updateEventById(eventId, request);
 

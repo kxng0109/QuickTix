@@ -76,7 +76,7 @@ public class EventControllerTest {
 		                            .eventStartDateTime(Instant.now().plus(2, ChronoUnit.HOURS))
 		                            .eventEndDateTime(Instant.now().plus(3, ChronoUnit.HOURS))
 		                            .ticketPrice(BigDecimal.valueOf(12345.68))
-		                            .numberOfSeats(40000)
+		                            .numberOfSeats(40000L)
 		                            .build();
 
 		response = EventResponse.builder()
@@ -86,7 +86,7 @@ public class EventControllerTest {
 		                        .venueName("venue name")
 		                        .ticketPrice(request.ticketPrice())
 		                        .status(EventStatus.UPCOMING.getDisplayName())
-		                        .availableSeats(30000)
+		                        .availableSeats(30000L)
 		                        .eventStartDateTime(request.eventStartDateTime())
 		                        .eventEndDateTime(request.eventEndDateTime())
 		                        .build();

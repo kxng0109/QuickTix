@@ -78,7 +78,7 @@ public record CreateEventRequest(
 		)
 		@NotNull(message = "Number of seats can't be blank")
 		@PositiveOrZero(message = "Number of seats must be 0 or greater.")
-		Integer numberOfSeats
+		Long numberOfSeats
 ) {
 	@AssertTrue(message = "Start date time must be before end date time")
 	@Schema(hidden = true)

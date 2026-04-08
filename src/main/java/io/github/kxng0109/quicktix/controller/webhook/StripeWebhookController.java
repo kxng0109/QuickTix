@@ -47,7 +47,7 @@ public class StripeWebhookController {
 	 * or a 400 Bad Request if the signature is invalid.
 	 */
 	@PostMapping
-	public ResponseEntity<String> handleStripEvent(
+	public ResponseEntity<String> handleStripeEvent(
 			@RequestBody String payload,
 			@RequestHeader("Stripe-Signature") String sigHeader
 	) {
@@ -69,7 +69,7 @@ public class StripeWebhookController {
 		if ("payment_intent.succeeded".equals(event.getType())) {
 			PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
 
-			if (paymentIntent != null && paymentIntent.getMetadata().containsKey("paymentId")) {
+			if (paymentIntent != null && paymentIntent.getMetadata() != null && paymentIntent.getMetadata().containsKey("paymentId")) {
 				Long paymentId = Long.parseLong(paymentIntent.getMetadata().get("paymentId"));
 				String intentId = paymentIntent.getId();
 

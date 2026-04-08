@@ -16,6 +16,7 @@ import io.github.kxng0109.quicktix.utils.AssertOwnershipOrAdmin;
 import io.github.kxng0109.quicktix.utils.BookingReferenceGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ import java.util.List;
  * booking confirmations after payment, and both user-initiated and system-initiated cancellations.
  * </p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookingService {
@@ -404,11 +406,13 @@ public class BookingService {
 			tries++;
 
 			if (tries > maxRetries) {
+				log.error("Max tries reached. Tried {} times out of {}.", tries, maxRetries);
 				throw new IllegalStateException(
 						"Failed to generate a unique booking reference. Maximum tries reached.");
 			}
 		} while (bookingRepository.existsByBookingReference(bookingReference));
 
+		log.debug("Took {} tries to generate booking reference.", tries);
 		return bookingReference;
 	}
 }

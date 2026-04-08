@@ -8,6 +8,7 @@ import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
+import io.github.kxng0109.quicktix.exception.InvalidAmountException;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
@@ -80,6 +81,10 @@ public class PaymentService {
 
 		BigDecimal totalAmount = booking.getTotalAmount();
 
+		if(totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0){
+			throw new InvalidAmountException("Amount must be greater than zero!");
+		}
+
 		String transferReference = UUID.randomUUID().toString();
 		Payment payment = Payment.builder()
 		                         .booking(booking)
@@ -120,7 +125,7 @@ public class PaymentService {
 	 */
 	@Transactional
 	public void handleSuccessfulWebhookPayment(Long paymentId, String stripePaymentIntentId) {
-		Payment payment = paymentRepository.findByBookingId(paymentId)
+		Payment payment = paymentRepository.findByIdAndLock(paymentId)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Payment not found from webhook")
 		                                   );
@@ -167,7 +172,7 @@ public class PaymentService {
 	 */
 	@Transactional
 	public void refundPayment(Long bookingId) {
-		Payment payment = paymentRepository.findByBookingId(bookingId)
+		Payment payment = paymentRepository.findByIdAndLock(bookingId)
 		                                   .orElseThrow(
 				                                   () -> new EntityNotFoundException("Payment not found")
 		                                   );

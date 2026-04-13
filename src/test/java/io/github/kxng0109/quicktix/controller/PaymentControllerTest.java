@@ -36,15 +36,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class PaymentControllerTest {
 
 	private final Long paymentId = 2L;
-	private final String transactionReference = UUID.randomUUID().toString();
 	private final BigDecimal amount = BigDecimal.valueOf(12345.68);
 	private final PaymentMethod paymentMethod = PaymentMethod.DEBIT_CARD;
 	private final PaymentStatus paymentStatus = PaymentStatus.COMPLETED;
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Autowired
 	private MockMvc mockMvc;
-
-	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@MockitoBean
 	private PaymentService paymentService;
@@ -58,6 +56,7 @@ public class PaymentControllerTest {
 	private PaymentRequest request;
 	private PaymentResponse response;
 	private User adminUser;
+	private String idempotencyKey;
 
 	@BeforeEach
 	public void setup() {
@@ -81,16 +80,24 @@ public class PaymentControllerTest {
 		                .role(Role.ADMIN)
 		                .passwordHash("hashed")
 		                .build();
+
+		idempotencyKey = UUID.randomUUID().toString();
 	}
 
 	@Test
 	public void initializePayment_should_return201CreatedAndPaymentResponse_whenRequestIsValid() throws Exception {
-		when(paymentService.initializePayment(any(PaymentRequest.class), any(User.class)))
-				.thenReturn(response);
+		when(
+				paymentService.initializePayment(
+						any(PaymentRequest.class),
+						anyString(),
+						any(User.class)
+				)
+		).thenReturn(response);
 
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
 						       .with(user(adminUser))
+						       .header("Idempotency-Key", idempotencyKey)
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isCreated())
@@ -98,6 +105,12 @@ public class PaymentControllerTest {
 		       .andExpect(jsonPath("$.amount").value(amount))
 		       .andExpect(jsonPath("$.status").value(paymentStatus.getDisplayName()))
 		       .andExpect(jsonPath("$.paymentMethod").value(paymentMethod.getDisplayName()));
+
+		verify(paymentService).initializePayment(
+				any(PaymentRequest.class),
+				anyString(),
+				any(User.class)
+		);
 	}
 
 	@Test
@@ -106,57 +119,121 @@ public class PaymentControllerTest {
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
 						       .with(user(adminUser))
+						       .header("Idempotency-Key", idempotencyKey)
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(badRequest))
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.bookingId").value("Booking ID is required"))
 		       .andExpect(jsonPath("$.paymentMethod").value("Payment method is required"));
 
-		verify(paymentService, never()).initializePayment(any(PaymentRequest.class), any(User.class));
+		verify(paymentService, never()).initializePayment(
+				any(PaymentRequest.class),
+				anyString(),
+				any(User.class)
+		);
+	}
+
+	@Test
+	public void initializePayment_should_return400BadRequest_whenIdempotencyKeyIsNotThere() throws Exception {
+		when(
+				paymentService.initializePayment(
+						any(PaymentRequest.class),
+						anyString(),
+						any(User.class)
+				)).thenReturn(response);
+
+		mockMvc.perform(
+				post("/api/v1/payments/initialize")
+						.with(user(adminUser))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request))
+		).andExpect(status().isBadRequest());
+
+		verify(paymentService, never()).initializePayment(
+				any(PaymentRequest.class),
+				anyString(),
+				any(User.class)
+		);
 	}
 
 	@Test
 	public void initializePayment_should_return404NotFound_whenBookingIsNotFound() throws Exception {
-		when(paymentService.initializePayment(any(PaymentRequest.class), any(User.class)))
-				.thenThrow(EntityNotFoundException.class);
+		when(
+				paymentService.initializePayment(
+						any(PaymentRequest.class),
+						anyString(),
+						any(User.class)
+				)
+		).thenThrow(EntityNotFoundException.class);
 
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
 						       .with(user(adminUser))
+						       .header("Idempotency-Key", idempotencyKey)
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isNotFound())
 		       .andExpect(jsonPath("$.statusCode").value(404))
 		       .andExpect(jsonPath("$.path").value("/api/v1/payments/initialize"));
+
+		verify(paymentService).initializePayment(
+				any(PaymentRequest.class),
+				anyString(),
+				any(User.class)
+		);
 	}
 
 	@Test
 	public void initializePayment_should_return400BadRequest_whenPaymentStatusIsNotPending() throws Exception {
-		when(paymentService.initializePayment(any(PaymentRequest.class), any(User.class)))
-				.thenThrow(InvalidOperationException.class);
+		when(
+				paymentService.initializePayment(
+						any(PaymentRequest.class),
+						anyString(),
+						any(User.class)
+				)
+		).thenThrow(InvalidOperationException.class);
 
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
 						       .with(user(adminUser))
+						       .header("Idempotency-Key", idempotencyKey)
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.statusCode").value(400))
 		       .andExpect(jsonPath("$.path").value("/api/v1/payments/initialize"));
+
+		verify(paymentService).initializePayment(
+				any(PaymentRequest.class),
+				anyString(),
+				any(User.class)
+		);
 	}
 
 	@Test
 	public void initializePayment_should_return400BadRequest_whenAmountIsDifferent() throws Exception {
-		when(paymentService.initializePayment(any(PaymentRequest.class), any(User.class)))
-				.thenThrow(InvalidAmountException.class);
+		when(
+				paymentService.initializePayment(
+						any(PaymentRequest.class),
+						anyString(),
+						any(User.class)
+				)
+		).thenThrow(InvalidAmountException.class);
 
 		mockMvc.perform(
 				       post("/api/v1/payments/initialize")
 						       .with(user(adminUser))
+						       .header("Idempotency-Key", idempotencyKey)
 						       .contentType(MediaType.APPLICATION_JSON)
 						       .content(objectMapper.writeValueAsString(request))
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.statusCode").value(400))
 		       .andExpect(jsonPath("$.path").value("/api/v1/payments/initialize"));
+
+		verify(paymentService).initializePayment(
+				any(PaymentRequest.class),
+				anyString(),
+				any(User.class)
+		);
 	}
 }

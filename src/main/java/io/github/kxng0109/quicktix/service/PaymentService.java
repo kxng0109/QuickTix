@@ -8,24 +8,29 @@ import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
+import io.github.kxng0109.quicktix.enums.Role;
+import io.github.kxng0109.quicktix.exception.ConflictException;
 import io.github.kxng0109.quicktix.exception.InvalidAmountException;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
 import io.github.kxng0109.quicktix.repositories.PaymentRepository;
 import io.github.kxng0109.quicktix.service.gateway.PaymentGateway;
+import io.github.kxng0109.quicktix.service.gateway.dto.GatewayInitializationResponse;
 import io.github.kxng0109.quicktix.utils.AssertOwnershipOrAdmin;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +42,7 @@ public class PaymentService {
 	private final BookingService bookingService;
 	private final PaymentGateway paymentGateway;
 	private final NotificationPublisherService notificationPublisherService;
+	private final StringRedisTemplate stringRedisTemplate;
 
 	@Transactional(readOnly = true)
 	public PaymentResponse getPaymentByBookingId(Long bookingId, User currentUser) {
@@ -47,7 +53,7 @@ public class PaymentService {
 
 		AssertOwnershipOrAdmin.check(currentUser, payment.getBooking().getUser());
 
-		return buildPaymentResponse(payment);
+		return buildPaymentResponse(payment, null);
 	}
 
 	//Its job is just to start the payment,
@@ -65,47 +71,72 @@ public class PaymentService {
 	 * @return A {@link PaymentResponse} containing the gateway's client secret.
 	 */
 	@Transactional
-	public PaymentResponse initializePayment(PaymentRequest request, User currentUser) {
-		Booking booking = bookingRepository.findById(request.bookingId())
-		                                   .orElseThrow(
-				                                   () -> new EntityNotFoundException("Booking not found")
-		                                   );
+	public PaymentResponse initializePayment(PaymentRequest request, String idempotencyKey, User currentUser) {
+		String normalizedIdempotencyKey = idempotencyKey.trim().toLowerCase();
+		Payment existingPayment = paymentRepository.findByIdempotencyKey(normalizedIdempotencyKey)
+		                                           .orElse(null);
 
-		if (!booking.getUser().getId().equals(currentUser.getId())) {
-			throw new EntityNotFoundException("Booking not found");
+		if (existingPayment != null) {
+			validateIdempotentPaymentOwnership(existingPayment, currentUser);
+			return buildPaymentResponse(existingPayment, existingPayment.getGatewayToken());
 		}
 
-		if (booking.getStatus() != BookingStatus.PENDING) {
-			throw new InvalidOperationException("Booking status must be PENDING");
+		String redisLockKey = "payment:lock:" + normalizedIdempotencyKey;
+		boolean acquiredLock = Objects.equals(
+				Boolean.TRUE,
+				stringRedisTemplate.opsForValue()
+				                   .setIfAbsent(
+						                   redisLockKey,
+						                   "processing",
+						                   Duration.ofMinutes(2)
+				                   )
+		);
+
+		//Lock has already been acquired by another request
+		if (!acquiredLock) {
+			log.warn("Concurrent payment initialization detected for idempotency key: {}", normalizedIdempotencyKey);
+
+			throw new ConflictException("This payment is currently being processed. Please wait.");
 		}
 
-		BigDecimal totalAmount = booking.getTotalAmount();
+		try {
+			Booking booking = bookingRepository.findById(request.bookingId())
+			                                   .orElseThrow(
+					                                   () -> new EntityNotFoundException("Booking not found")
+			                                   );
 
-		if(totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0){
-			throw new InvalidAmountException("Amount must be greater than zero!");
+			validateBookingOwnership(booking, currentUser);
+
+			if (booking.getStatus() != BookingStatus.PENDING) {
+				throw new InvalidOperationException("Booking status must be PENDING");
+			}
+
+			BigDecimal totalAmount = booking.getTotalAmount();
+
+			if (totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+				throw new InvalidAmountException("Amount must be greater than zero!");
+			}
+
+			Payment payment = Payment.builder()
+			                         .booking(booking)
+			                         .amount(totalAmount)
+			                         .status(PaymentStatus.PENDING)
+			                         .paymentMethod(request.paymentMethod())
+			                         .idempotencyKey(normalizedIdempotencyKey)
+			                         .build();
+
+			Payment savedPayment = paymentRepository.save(payment);
+
+			GatewayInitializationResponse gatewayToken = paymentGateway.initializePayment(savedPayment);
+
+			savedPayment.setTransactionReference(gatewayToken.transactionId());
+			savedPayment.setGatewayToken(gatewayToken.clientSecret());
+			paymentRepository.save(savedPayment);
+
+			return buildPaymentResponse(savedPayment, gatewayToken.clientSecret());
+		} finally {
+			stringRedisTemplate.delete(redisLockKey);
 		}
-
-		String transferReference = UUID.randomUUID().toString();
-		Payment payment = Payment.builder()
-		                         .booking(booking)
-		                         .amount(totalAmount)
-		                         .status(PaymentStatus.PENDING)
-		                         .paymentMethod(request.paymentMethod())
-		                         .transactionReference(transferReference)
-		                         .build();
-
-		Payment savedPayment = paymentRepository.save(payment);
-
-		String gatewayToken = paymentGateway.initializePayment(savedPayment);
-
-		return PaymentResponse.builder()
-		                      .paymentId(savedPayment.getId())
-		                      .amount(savedPayment.getAmount())
-		                      .status(savedPayment.getStatus().getDisplayName())
-		                      .paymentMethod(savedPayment.getPaymentMethod().getDisplayName())
-		                      .paidAt(savedPayment.getPaidAt())
-		                      .clientSecret(gatewayToken)
-		                      .build();
 	}
 
 	/**
@@ -231,13 +262,33 @@ public class PaymentService {
 		log.debug("Successfully refunded Payment ID: {}", payment.getId());
 	}
 
-	private PaymentResponse buildPaymentResponse(Payment payment) {
+	private void validateBookingOwnership(Booking booking, User currentUser) {
+		if (currentUser.getRole().equals(Role.ADMIN)) return;
+
+		if (!Objects.equals(currentUser.getId(), booking.getUser().getId())) {
+			throw new EntityNotFoundException("Booking Not Found!");
+		}
+	}
+
+	private void validateIdempotentPaymentOwnership(
+			Payment existingPayment,
+			User currentUser
+	){
+		if (currentUser.getRole().equals(Role.ADMIN)) return;
+
+		if (!Objects.equals(currentUser.getId(), existingPayment.getBooking().getUser().getId())) {
+			throw new EntityNotFoundException("Payment Not Found!");
+		}
+	}
+
+	private PaymentResponse buildPaymentResponse(Payment payment, String clientSecret) {
 		return PaymentResponse.builder()
 		                      .paymentId(payment.getId())
 		                      .amount(payment.getAmount())
 		                      .status(payment.getStatus().getDisplayName())
 		                      .paymentMethod(payment.getPaymentMethod().getDisplayName())
 		                      .paidAt(payment.getPaidAt())
+		                      .clientSecret(clientSecret)
 		                      .build();
 	}
 }

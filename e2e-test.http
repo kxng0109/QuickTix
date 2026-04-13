@@ -115,6 +115,7 @@ Content-Type: application/json
 ### 8. Initialize Payment (Normal User)
 POST http://localhost:8081/api/v1/payments/initialize
 Authorization: Bearer {{user_token}}
+Idempotency-Key: payment-init-{{booking_id}}-001
 Content-Type: application/json
 
 {

@@ -6,8 +6,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Builder;
 
-import java.math.BigDecimal;
-
 @Builder
 @Schema(description = "Request payload for initializing a payment")
 public record PaymentRequest(

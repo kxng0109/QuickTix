@@ -1,5 +1,6 @@
 package io.github.kxng0109.quicktix.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -8,6 +9,7 @@ import java.time.Instant;
 
 @Builder
 @Schema(description = "Payment details response")
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record PaymentResponse(
 		@Schema(description = "Unique payment identifier", example = "1")
 		Long paymentId,

@@ -5,6 +5,7 @@ import io.github.kxng0109.quicktix.dto.response.PaymentResponse;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -12,6 +13,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -72,10 +75,23 @@ public class PaymentController {
 	@PostMapping("/initialize")
 	public ResponseEntity<PaymentResponse> initializePayment(
 			@Valid @RequestBody PaymentRequest request,
+			@Parameter(
+					description = "Client-generated idempotency key used to safely retry payment initialization",
+					example = "4f6a3cc0-5243-4ae2-a7f6-37d0ec4ad877",
+					required = true
+			)
+			@RequestHeader(name = "Idempotency-Key")
+			@NotEmpty(message = "Idempotency key is required")
+			@Size(min = 8, message = "Idempotency key must be at least 8 characters")
+			String idempotencyKey,
 			@AuthenticationPrincipal User currentUser
 	) {
 		return new ResponseEntity<>(
-				paymentService.initializePayment(request, currentUser),
+				paymentService.initializePayment(
+						request,
+						idempotencyKey,
+						currentUser
+				),
 				HttpStatus.CREATED
 		);
 	}

@@ -22,6 +22,16 @@ import java.util.Map;
 @RestControllerAdvice
 @Hidden
 public class GlobalExceptionHandler {
+	@ExceptionHandler(ConflictException.class)
+	public ResponseEntity<ErrorResponse> handleConflictException(
+			ConflictException ex,
+			HttpServletRequest request
+	) {
+		HttpStatus status = HttpStatus.CONFLICT;
+
+		return buildErrorResponse(ex, request, status);
+	}
+
 	@ExceptionHandler(UserExistsException.class)
 	public ResponseEntity<ErrorResponse> handleUserExistsException(
 			UserExistsException ex,

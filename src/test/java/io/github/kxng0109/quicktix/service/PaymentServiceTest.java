@@ -10,12 +10,14 @@ import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.PaymentMethod;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import io.github.kxng0109.quicktix.enums.Role;
+import io.github.kxng0109.quicktix.exception.ConflictException;
 import io.github.kxng0109.quicktix.exception.InvalidAmountException;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
 import io.github.kxng0109.quicktix.repositories.PaymentRepository;
 import io.github.kxng0109.quicktix.service.gateway.PaymentGateway;
+import io.github.kxng0109.quicktix.service.gateway.dto.GatewayInitializationResponse;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,9 +25,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -64,6 +69,12 @@ public class PaymentServiceTest {
 	@Mock
 	private NotificationPublisherService notificationPublisherService;
 
+	@Mock
+	private StringRedisTemplate stringRedisTemplate;
+
+	@Mock
+	private ValueOperations<String, String> valueOps;
+
 	@InjectMocks
 	private PaymentService paymentService;
 
@@ -71,6 +82,7 @@ public class PaymentServiceTest {
 	private Booking booking;
 	private User user;
 	private Event event;
+	private String idempotencyKey;
 
 	@BeforeEach
 	void setUp() {
@@ -105,7 +117,16 @@ public class PaymentServiceTest {
 		                 .build();
 
 		booking.setPayment(payment);
+		idempotencyKey = UUID.randomUUID().toString();
+
 		lenient().when(paymentGateway.refundTransaction(transferReference)).thenReturn(true);
+		when(stringRedisTemplate.opsForValue()).thenReturn(valueOps);
+		lenient().when(
+				stringRedisTemplate.opsForValue().setIfAbsent(
+						anyString(),
+						anyString(),
+						any(Duration.class)
+				)).thenReturn(true);
 	}
 
 	@Test
@@ -154,15 +175,22 @@ public class PaymentServiceTest {
 	}
 
 	@Test
-	public void initializePayment_should_returnAPaymentResponse_when_requestIsValid() {
+	public void initializePayment_should_returnAPaymentResponse_when_requestIsValid_and_idempotencyKeyDoesNotExist() {
+		when(paymentRepository.findByIdempotencyKey(anyString()))
+				.thenReturn(Optional.empty());
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 		when(paymentRepository.save(any(Payment.class)))
 				.thenReturn(payment);
 		when(paymentGateway.initializePayment(any(Payment.class)))
-				.thenReturn("clientSecret");
+				.thenReturn(
+						GatewayInitializationResponse.builder()
+						                             .transactionId(UUID.randomUUID().toString())
+						                             .clientSecret("clientSecret")
+						                             .build()
+				);
 
-		PaymentResponse response = paymentService.initializePayment(request, user);
+		PaymentResponse response = paymentService.initializePayment(request, idempotencyKey, user);
 
 		assertNotNull(response);
 		assertEquals(paymentStatus.getDisplayName(), response.status());
@@ -170,12 +198,34 @@ public class PaymentServiceTest {
 		assertEquals(paymentId, response.paymentId());
 		assertEquals("clientSecret", response.clientSecret());
 
+		verify(paymentRepository).findByIdempotencyKey(anyString());
+		verify(valueOps).setIfAbsent(anyString(), anyString(), any(Duration.class));
 		verify(bookingRepository).findById(anyLong());
-		verify(paymentRepository).save(any(Payment.class));
+		verify(paymentRepository, times(2)).save(any(Payment.class));
 	}
 
 	@Test
-	public void initializePayment_should_throwEntityNotFoundException_when_userDoesNotOwnBooking() {
+	public void initializePayment_should_returnAPreviousPaymentResponse_when_requestIsValid_and_idempotencyKeyExist() {
+		payment.setGatewayToken("clientSecret");
+		when(paymentRepository.findByIdempotencyKey(anyString()))
+				.thenReturn(Optional.of(payment));
+
+		PaymentResponse response = paymentService.initializePayment(request, idempotencyKey, user);
+
+		assertNotNull(response);
+		assertEquals(paymentStatus.getDisplayName(), response.status());
+		assertEquals(paymentMethod.getDisplayName(), response.paymentMethod());
+		assertEquals(paymentId, response.paymentId());
+		assertEquals("clientSecret", response.clientSecret());
+
+		verify(paymentRepository).findByIdempotencyKey(anyString());
+		verify(valueOps, never()).setIfAbsent(anyString(), anyString(), any(Duration.class));
+		verify(bookingRepository, never()).findById(anyLong());
+		verify(paymentRepository, never()).save(any(Payment.class));
+	}
+
+	@Test
+	public void initializePayment_should_throwEntityNotFoundException_when_userDoesNotOwnPaymentAndNotAdmin() {
 		// Create a malicious user with a different ID than the one on the booking
 		User maliciousUser = User.builder()
 		                         .id(999L)
@@ -183,69 +233,133 @@ public class PaymentServiceTest {
 		                         .email("hacker@example.com")
 		                         .build();
 
+		when(paymentRepository.findByIdempotencyKey(anyString()))
+				.thenReturn(Optional.of(payment)); // The payment belongs to 'user' (ID 300L)
+
+		EntityNotFoundException ex = assertThrows(
+				EntityNotFoundException.class,
+				() -> paymentService.initializePayment(request, idempotencyKey, maliciousUser)
+		);
+
+		assertEquals("Payment Not Found!", ex.getMessage());
+
+		verify(paymentRepository).findByIdempotencyKey(anyString());
+		verify(valueOps, never()).setIfAbsent(anyString(), anyString(), any(Duration.class));
+		verify(bookingRepository, never()).findById(anyLong());
+		verify(paymentRepository, never()).save(any(Payment.class));
+	}
+
+	@Test
+	public void initializePayment_should_throwEntityNotFoundException_when_userDoesNotOwnBookingAndNotAdmin() {
+		// Create a malicious user with a different ID than the one on the booking
+		User maliciousUser = User.builder()
+		                         .id(999L)
+		                         .role(Role.USER)
+		                         .email("hacker@example.com")
+		                         .build();
+
+		when(paymentRepository.findByIdempotencyKey(anyString()))
+				.thenReturn(Optional.empty());
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking)); // The booking belongs to 'user' (ID 300L)
 
 		EntityNotFoundException ex = assertThrows(
 				EntityNotFoundException.class,
-				() -> paymentService.initializePayment(request, maliciousUser)
+				() -> paymentService.initializePayment(request, idempotencyKey, maliciousUser)
 		);
 
-		assertEquals("Booking not found", ex.getMessage());
+		assertEquals("Booking Not Found!", ex.getMessage());
 
+		verify(paymentRepository).findByIdempotencyKey(anyString());
+		verify(valueOps).setIfAbsent(anyString(), anyString(), any(Duration.class));
 		verify(bookingRepository).findById(anyLong());
-		verify(paymentRepository, never()).save(any(Payment.class)); // Ensure no payment is created
+		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(stringRedisTemplate).delete(anyString());
+	}
+
+	@Test
+	public void initializePayment_should_throwConflictException_when_lockCannotBeAcquired() {
+		when(paymentRepository.findByIdempotencyKey(anyString()))
+				.thenReturn(Optional.empty());
+		when(stringRedisTemplate.opsForValue().setIfAbsent(anyString(), anyString(), any(Duration.class)))
+				.thenReturn(false);
+
+		ConflictException ex = assertThrows(
+				ConflictException.class,
+				() -> paymentService.initializePayment(request, idempotencyKey, user)
+		);
+
+		assertEquals("This payment is currently being processed. Please wait.", ex.getMessage());
+
+		verify(paymentRepository).findByIdempotencyKey(anyString());
+		verify(valueOps).setIfAbsent(anyString(), anyString(), any(Duration.class));
+		verify(bookingRepository, never()).findById(anyLong());
+		verify(paymentRepository, never()).save(any(Payment.class));
 	}
 
 	@Test
 	public void initializePayment_should_throwEntityNotFoundException_when_bookingIsNotFound() {
+		when(paymentRepository.findByIdempotencyKey(anyString()))
+				.thenReturn(Optional.empty());
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.empty());
 
 		assertThrows(
 				EntityNotFoundException.class,
-				() -> paymentService.initializePayment(request, user)
+				() -> paymentService.initializePayment(request, idempotencyKey, user)
 		);
 
+		verify(paymentRepository).findByIdempotencyKey(anyString());
+		verify(valueOps).setIfAbsent(anyString(), anyString(), any(Duration.class));
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(stringRedisTemplate).delete(anyString());
 	}
 
 	@Test
 	public void initializePayment_should_throwInvalidOperationException_when_bookingStatusIsNotPending() {
 		booking.setStatus(BookingStatus.CONFIRMED);
 
+		when(paymentRepository.findByIdempotencyKey(anyString()))
+				.thenReturn(Optional.empty());
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 
 		assertThrows(
 				InvalidOperationException.class,
-				() -> paymentService.initializePayment(request, user)
+				() -> paymentService.initializePayment(request, idempotencyKey, user)
 		);
 
+		verify(paymentRepository).findByIdempotencyKey(anyString());
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository, never()).save(any(Payment.class));
+		verify(stringRedisTemplate).delete(anyString());
 	}
 
 	@Test
-	public void initializePayment_should_throwInvalidAmountException_when_bookingPriceIsNull(){
+	public void initializePayment_should_throwInvalidAmountException_when_bookingPriceIsNull() {
 		booking.setTotalAmount(null);
 
+		when(paymentRepository.findByIdempotencyKey(anyString()))
+				.thenReturn(Optional.empty());
 		when(bookingRepository.findById(anyLong()))
 				.thenReturn(Optional.of(booking));
 
 		assertThrows(
 				InvalidAmountException.class,
-				() -> paymentService.initializePayment(request, user)
+				() -> paymentService.initializePayment(request, idempotencyKey, user)
 		);
 
+		verify(paymentRepository).findByIdempotencyKey(anyString());
+		verify(valueOps).setIfAbsent(anyString(), anyString(), any(Duration.class));
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(paymentGateway, never()).initializePayment(any(Payment.class));
+		verify(stringRedisTemplate).delete(anyString());
 	}
 
 	@Test
-	public void initializePayment_should_throwInvalidAmountException_when_bookingPriceIsLessThanOne(){
+	public void initializePayment_should_throwInvalidAmountException_when_bookingPriceIsLessThanOne() {
 		booking.setTotalAmount(BigDecimal.ZERO);
 
 		when(bookingRepository.findById(anyLong()))
@@ -253,12 +367,15 @@ public class PaymentServiceTest {
 
 		assertThrows(
 				InvalidAmountException.class,
-				() -> paymentService.initializePayment(request, user)
+				() -> paymentService.initializePayment(request, idempotencyKey, user)
 		);
 
+		verify(paymentRepository).findByIdempotencyKey(anyString());
+		verify(valueOps).setIfAbsent(anyString(), anyString(), any(Duration.class));
 		verify(bookingRepository).findById(anyLong());
 		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(paymentGateway, never()).initializePayment(any(Payment.class));
+		verify(stringRedisTemplate).delete(anyString());
 	}
 
 

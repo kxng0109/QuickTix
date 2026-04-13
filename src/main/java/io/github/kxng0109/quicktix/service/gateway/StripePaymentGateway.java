@@ -4,10 +4,12 @@ import com.stripe.StripeClient;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
+import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
 import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
+import io.github.kxng0109.quicktix.service.gateway.dto.GatewayInitializationResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -42,13 +44,18 @@ public class StripePaymentGateway implements PaymentGateway {
 	 * can identify the transaction later.
 	 *
 	 * @param payment the internal payment record to be processed.
-	 * @return the Stripe Client Secret required by the frontend.
+	 * @return a {@link GatewayInitializationResponse} containing the Stripe Client Secret
+	 * as a String and the Stripe paymentIntent ID.
 	 * @throws PaymentFailedException if the Stripe API rejects the request.
 	 */
 	@Override
-	public String initializePayment(Payment payment) {
+	public GatewayInitializationResponse initializePayment(Payment payment) {
 		try {
 			long amountInKobo = payment.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+
+			RequestOptions options = RequestOptions.builder()
+			                                       .setIdempotencyKey(payment.getIdempotencyKey())
+			                                       .build();
 
 			PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
 			                                                            .setAmount(amountInKobo)
@@ -63,11 +70,15 @@ public class StripePaymentGateway implements PaymentGateway {
 			                                                            .build();
 
 			//An object that tracks the entire lifecycle of a customer's checkout process
-			PaymentIntent paymentIntent = stripeClient.v1().paymentIntents().create(params);
+			PaymentIntent paymentIntent = stripeClient.v1().paymentIntents().create(params, options);
 			log.info("Created Stripe PaymentIntent for Payment ID: {}", payment.getId());
 
 			//It returns a client_secret that the frontend uses to complete a payment by rendering the credit card form
-			return paymentIntent.getClientSecret();
+			//and returns the stripe transaction id for the transaction, to be saved in the database as transactionReference
+			return GatewayInitializationResponse.builder()
+			                                    .clientSecret(paymentIntent.getClientSecret())
+			                                    .transactionId(paymentIntent.getId())
+			                                    .build();
 		} catch (StripeException e) {
 			log.error("Stripe initialization failed for Payment ID: {}", payment.getId(), e);
 			throw new PaymentFailedException("Failed to initialize payment with provider: " + e.getMessage());

@@ -23,6 +23,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
 	Optional<Payment> findByTransactionReference(String transactionReference);
 
+	Optional<Payment> findByIdempotencyKey(String idempotencyKey);
+
 	//Using it to get all payments for an event in order to do something like
 	//issue a refund for canceled events
 	List<Payment> findByBooking_EventIdAndStatus(Long eventId, PaymentStatus status);

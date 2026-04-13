@@ -8,7 +8,7 @@ package io.github.kxng0109.quicktix.exception;
  * they must provide alternative credentials or initiate a password reset.
  * </p>
  */
-public class UserExistsException extends RuntimeException {
+public class UserExistsException extends ConflictException {
     public UserExistsException(){
         super("User with this email exists.");
     }

@@ -35,6 +35,12 @@ public class Payment {
     @Builder.Default
     private PaymentStatus status = PaymentStatus.PENDING;
 
+    @Column(name = "idempotency_key", unique = true, nullable = false, updatable = false)
+    private String idempotencyKey;
+
+    @Column(name = "gateway_token")
+    private String gatewayToken;
+
     /*@Column(name = "payment_provider", nullable = false)
     private PaymentProvider paymentProvider;*/
 

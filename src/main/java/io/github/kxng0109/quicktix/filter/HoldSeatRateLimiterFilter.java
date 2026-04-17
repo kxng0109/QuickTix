@@ -75,9 +75,9 @@ public class HoldSeatRateLimiterFilter extends OncePerRequestFilter {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 		if (
 				auth == null
-						|| !auth.isAuthenticated()
-						|| Objects.equals(auth.getPrincipal(), "anonymousUser")
-						|| Objects.equals(auth.getName(), "user")
+				|| !auth.isAuthenticated()
+				|| Objects.equals(auth.getPrincipal(), "anonymousUser")
+				|| auth.getAuthorities().isEmpty()
 		) {
 			filterChain.doFilter(request, response);
 			return;

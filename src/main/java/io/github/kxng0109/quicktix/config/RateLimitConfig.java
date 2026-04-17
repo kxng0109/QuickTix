@@ -15,18 +15,39 @@ import java.time.Duration;
 import java.util.function.Supplier;
 
 /**
- * Configuration class for rate limiting using Redis and Bucket4j.
+ * Centralized configuration for distributed rate limiting within the QuickTix ticket booking system.
  * <p>
- * This class sets up the necessary infrastructure to apply and enforce rate limits
- * on APIs or other parts of the application using the {@link io.github.bucket4j.Bucket Bucket4j} library with
- * Redis as the backing store. It ensures that API consumers are restricted to a defined
- * number of operations within a specific time window, which helps prevent abuse and keeps
- * the application responsive under heavy loads.
+ * This configuration class establishes the infrastructure required to throttle incoming requests,
+ * protect backend resources, and ensure fair access during high-traffic events. It leverages
+ * <strong>Bucket4j</strong> for the token-bucket algorithm and utilizes <strong>Redis (via Lettuce)</strong>
+ * as a distributed state backend. This guarantees that rate limit consumption remains perfectly
+ * synchronized across multiple application instances in a scalable environment.
  * </p>
- * <p>
- * The rate limiting functionality is backed by a Redis instance defined using parameters
- * such as host, port, and password that are configurable from the application's properties.
- * </p>
+ *
+ * <h3>Architectural Components</h3>
+ * <ul>
+ * <li>{@link RedisClient}: Manages the secure, resilient connection to the Redis datastore.</li>
+ * <li>{@link ProxyManager}: Serves as the distributed engine for Bucket4j, executing
+ * Compare-And-Swap (CAS) operations to ensure atomic, thread-safe bucket updates without
+ * heavy locking overhead.</li>
+ * </ul>
+ *
+ * <h3>Rate Limiting Profiles</h3>
+ * This class exposes several {@link Supplier} beans that define the bandwidth constraints for
+ * different layers of the application:
+ * <ul>
+ * <li><strong>IP Traffic ({@link #ipBucketConfiguration()}):</strong> Provides global traffic shaping
+ * to mitigate DDoS attacks or aggressive scraping.</li>
+ * <li><strong>User Operations ({@link #userBucketConfiguration()}):</strong> Controls the general
+ * velocity of authenticated user actions to prevent API abuse.</li>
+ * <li><strong>Seat Holds ({@link #holdSeatsBucketConfiguration()}):</strong> A strict, highly
+ * constrained profile designed specifically to manage concurrency and ensure fairness when
+ * users are attempting to reserve tickets.</li>
+ * </ul>
+ *
+ * @see io.github.bucket4j.Bucket
+ * @see io.github.bucket4j.distributed.proxy.ProxyManager
+ * @see io.lettuce.core.RedisClient
  */
 @Configuration
 public class RateLimitConfig {
@@ -112,29 +133,99 @@ public class RateLimitConfig {
 	}
 
 	/**
-	 * Provides the configuration for creating {@link BucketConfiguration} instances with predefined
-	 * rate-limiting parameters.
-	 * <p>
-	 * This method defines a rate-limiting policy using a {@link Bandwidth} configuration, which specifies
-	 * a total capacity of 20 tokens and a refill interval of 10 tokens every 10 seconds. The configuration
-	 * is encapsulated within a {@link BucketConfiguration} object and returned as a {@link Supplier},
-	 * allowing it to be lazily instantiated and reused wherever required.
-	 * </p>
-	 * <p>
-	 * This setup is critical for enforcing rate limits in the application, ensuring that consumers of
-	 * APIs are limited to a controlled number of requests within a given interval to maintain system
-	 * stability and prevent abuse.
-	 * </p>
+	 * Creates a {@link Supplier} that provides a pre-configured {@link BucketConfiguration} for rate-limiting IP traffic.
 	 *
-	 * @return a {@link Supplier} of {@link BucketConfiguration}, pre-configured with a single
-	 * rate-limiting {@link Bandwidth} instance defining a capacity of 20 tokens and a refill interval
-	 * of 10 tokens every 10 seconds.
+	 * <p>This method defines a {@link BucketConfiguration} with a single {@link Bandwidth} limit, allowing up to 150 tokens
+	 * as the maximum capacity. The bucket refills at a rate of 60 tokens per minute using a greedy refill strategy.
+	 * The configuration is intended for controlling incoming IP-based traffic to ensure fair usage or prevent abuse.
+	 *
+	 * <p>This can be used in scenarios such as API rate limiting, where each IP address is allocated a maximum number
+	 * of requests within a certain time window.
+	 *
+	 * @return a {@link Supplier} instance that provides the configured {@link BucketConfiguration} with the specified
+	 * bandwidth constraints.
+	 * @implNote The {@link Bandwidth} limit uses a "greedy" refill strategy, which immediately adds available tokens upon
+	 * refill rather than distributing them gradually.
+	 * @see BucketConfiguration
+	 * @see Bandwidth
+	 * @see Supplier
 	 */
 	@Bean
-	public Supplier<BucketConfiguration> bucketConfiguration() {
+	public Supplier<BucketConfiguration> ipBucketConfiguration() {
 		Bandwidth bandwidth = Bandwidth.builder()
-		                               .capacity(2)
-		                               .refillIntervally(10, Duration.ofSeconds(10))
+		                               .capacity(150)
+		                               .refillGreedy(60, Duration.ofMinutes(1))
+		                               .build();
+
+		return () -> BucketConfiguration.builder()
+		                                .addLimit(bandwidth)
+		                                .build();
+	}
+
+	/**
+	 * Provides a supplier for the bucket configuration used to manage rate-limiting of user operations.
+	 * <p>
+	 * This method defines a {@link BucketConfiguration} with specific bandwidth limits tailored to control
+	 * the frequency of user-related API requests or actions. The bucket is configured with a capacity of
+	 * 60 operations and allows refilling of 30 tokens every minute. This ensures a balance between user
+	 * experience and system resource protection by limiting excessive usage. The {@link Supplier} pattern
+	 * is utilized to make the configuration dynamically available to components that require it.
+	 * </p>
+	 *
+	 * <ul>
+	 *   <li><strong>Bandwidth configuration:</strong> The bucket's capacity is set to 60, with a greedy refill
+	 *       strategy that adds 30 tokens every minute.</li>
+	 *   <li><strong>Dynamic usage:</strong> Encapsulating the configuration within a {@link Supplier} simplifies
+	 *       its injection into other components where rate-limiting constraints are necessary.</li>
+	 * </ul>
+	 *
+	 * @return a {@link Supplier} providing a {@link BucketConfiguration} configured with bandwidth limits specifically
+	 * designed for user operation rate-limiting. The supplier is guaranteed to be non-null.
+	 * @implNote This method supports centralized rate-limiting configurations for distributing resource access fairly
+	 * across users while protecting the system against abuse. It is suited for scalable architectures and distributed
+	 * environments.
+	 * @see BucketConfiguration
+	 * @see Bandwidth
+	 */
+	@Bean
+	public Supplier<BucketConfiguration> userBucketConfiguration() {
+		Bandwidth bandwidth = Bandwidth.builder()
+		                               .capacity(60)
+		                               .refillGreedy(30, Duration.ofMinutes(1))
+		                               .build();
+
+		return () -> BucketConfiguration.builder()
+		                                .addLimit(bandwidth)
+		                                .build();
+	}
+
+	/**
+	 * Provides a supplier for the bucket configuration used to manage rate-limiting of seat hold operations.
+	 * <p>
+	 * This method defines a {@link BucketConfiguration} with specific bandwidth limits tailored to control
+	 * the frequency of holding seats. The bucket is configured to allow up to 5 seat hold operations per minute,
+	 * ensuring fair usage and preventing resource abuse. The {@link Supplier} encapsulates the configuration to
+	 * enable dynamic injection into components requiring rate-limiting behavior.
+	 * </p>
+	 *
+	 * <ul>
+	 *   <li><strong>Bandwidth configuration:</strong> Allows a capacity of 5 operations to be refilled incrementally
+	 *       every minute.</li>
+	 *   <li><strong>Dynamic usage:</strong> The {@link Supplier} makes it easy to supply the configuration in
+	 *       rate-limiting scenarios where hold seat operations are constrained.</li>
+	 * </ul>
+	 *
+	 * @return a {@link Supplier} providing a {@link BucketConfiguration} with bandwidth limits designed
+	 * for seat hold rate-limiting. The supplier is never {@code null}.
+	 * @implNote This method is intended to be used in environments where rate-limited seat holds are necessary
+	 * to manage fair distribution of resources among concurrent users.
+	 * @see RateLimitConfig#proxyManager
+	 */
+	@Bean
+	public Supplier<BucketConfiguration> holdSeatsBucketConfiguration() {
+		Bandwidth bandwidth = Bandwidth.builder()
+		                               .capacity(5)
+		                               .refillIntervally(5, Duration.ofMinutes(1))
 		                               .build();
 
 		return () -> BucketConfiguration.builder()

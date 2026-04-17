@@ -46,7 +46,7 @@ import java.util.function.Supplier;
  */
 @RequiredArgsConstructor
 @Slf4j
-public class RateLimiterFilter extends OncePerRequestFilter {
+public class IPRateLimiterFilter extends OncePerRequestFilter {
 
 	private final ProxyManager<byte[]> proxyManager;
 	private final Supplier<BucketConfiguration> bucketConfiguration;
@@ -91,7 +91,6 @@ public class RateLimiterFilter extends OncePerRequestFilter {
 					"{\"statusCode\": 429, \"message\": \"Too many requests. Try again in %d seconds.\", \"path\": \"%s\"}",
 					timeLeftInSeconds, request.getRequestURI()
 			);
-
 			response.getWriter().write(jsonPayload);
 		}
 	}

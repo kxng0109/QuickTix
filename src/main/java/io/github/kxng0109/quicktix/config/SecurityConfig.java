@@ -1,5 +1,7 @@
 package io.github.kxng0109.quicktix.config;
 
+import io.github.kxng0109.quicktix.filter.HoldSeatRateLimiterFilter;
+import io.github.kxng0109.quicktix.filter.UserRateLimiterFilter;
 import io.github.kxng0109.quicktix.security.JwtAccessDeniedHandler;
 import io.github.kxng0109.quicktix.security.JwtAuthenticationEntryPoint;
 import io.github.kxng0109.quicktix.security.JwtAuthenticationFilter;
@@ -20,13 +22,29 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Central security configuration for the QuickTix API.
- * <p>
- * This configuration establishes a purely stateless, RESTful security architecture using JSON Web Tokens (JWT).
- * It disables session creation and CSRF protection (which are unnecessary for stateless APIs),
- * registers the custom {@link JwtAuthenticationFilter} to intercept requests, and defines the global
- * Authorization routing rules (whitelisting Swagger, Auth, and Webhooks, while securing Domains).
- * </p>
+ * Configuration class for securing the application using Spring Security.
+ *
+ * <p>This class is responsible for defining security policies, authentication, and
+ * authorization mechanisms for the application. It sets up JWT-based stateless
+ * authentication, along with role-based access controls for various endpoints.
+ * Additionally, it integrates security filters for JWT validation, rate limiting,
+ * and exception handling.
+ *
+ * <p>The primary goal of this configuration is to ensure proper access management
+ * to APIs, protect against unauthorized and invalid requests, and enforce separation
+ * of user roles.
+ *
+ * <p>Key components used:
+ * <ul>
+ *     <li>{@link JwtAuthenticationFilter} for validating JWT tokens and user authentication.</li>
+ *     <li>{@link JwtAuthenticationEntryPoint} for handling unauthorized access attempts.</li>
+ *     <li>{@link JwtAccessDeniedHandler} for managing access denial scenarios.</li>
+ *     <li>{@link UserRateLimiterFilter} and {@link HoldSeatRateLimiterFilter} for request rate limiting.</li>
+ * </ul>
+ *
+ * <p>This class utilizes {@link EnableWebSecurity} and {@link EnableMethodSecurity} to
+ * enable global and method-level security configurations. All configurations are designed
+ * to enforce stateless session management and rely on bearer tokens for authentication.
  */
 @Configuration
 @EnableWebSecurity
@@ -37,6 +55,8 @@ public class SecurityConfig {
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 	private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 	private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+	private final UserRateLimiterFilter userRateLimiterFilter;
+	private final HoldSeatRateLimiterFilter holdSeatRateLimiterFilter;
 
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -83,6 +103,14 @@ public class SecurityConfig {
 				.addFilterBefore(
 						jwtAuthenticationFilter,
 						UsernamePasswordAuthenticationFilter.class
+				)
+				.addFilterAfter(
+						userRateLimiterFilter,
+						JwtAuthenticationFilter.class
+				)
+				.addFilterAfter(
+						holdSeatRateLimiterFilter,
+						UserRateLimiterFilter.class
 				);
 
 		return http.build();

@@ -1,7 +1,9 @@
 package io.github.kxng0109.quicktix.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.github.kxng0109.quicktix.config.RateLimitTestConfig;
+import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
 import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
@@ -18,10 +20,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -39,6 +43,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(EventController.class)
+@ActiveProfiles("test")
+@Import(RateLimitTestConfig.class)
 public class EventControllerTest {
 
 	private final Long eventId = 100L;

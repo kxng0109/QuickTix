@@ -5,7 +5,6 @@ import io.github.kxng0109.quicktix.entity.Booking;
 import io.github.kxng0109.quicktix.entity.Seat;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
-import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
 import io.github.kxng0109.quicktix.repositories.BookingRepository;
 import io.github.kxng0109.quicktix.repositories.SeatRepository;
@@ -15,7 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -44,14 +42,12 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 
 	@Autowired
 	private UserRepository userRepository;
-	@Autowired
-	private PasswordEncoder passwordEncoder;
 
 	@MockitoBean
 	private SeatLockService seatLockService;
 
 	@BeforeEach
-	void setUp(){
+	void setUp() {
 		lenient().when(seatLockService.acquireLock(anyLong(), anyString())).thenReturn(true);
 	}
 
@@ -108,11 +104,11 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		                                                     .phoneNumber("+2341111111111")
 		                                                     .build();
 
-		MvcResult registerResult =  mockMvc.perform(post("/api/v1/auth/register")
-				                .contentType(MediaType.APPLICATION_JSON)
-				                .content(objectMapper.writeValueAsString(registerRequest)))
-		                                            .andExpect(status().isCreated())
-				.andReturn();
+		MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
+				                                           .contentType(MediaType.APPLICATION_JSON)
+				                                           .content(objectMapper.writeValueAsString(registerRequest)))
+		                                  .andExpect(status().isCreated())
+		                                  .andReturn();
 
 		String responseBody = registerResult.getResponse().getContentAsString();
 		String userToken = objectMapper.readTree(responseBody).get("token").asText();
@@ -217,30 +213,30 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		Long eventId = objectMapper.readTree(eventResult.getResponse().getContentAsString()).get("id").asLong();
 
 		MvcResult user1Result = mockMvc.perform(post("/api/v1/auth/register")
-				                .contentType(MediaType.APPLICATION_JSON)
-				                .content(objectMapper.writeValueAsString(
-						                CreateUserRequest.builder()
-						                                 .firstName("User")
-						                                 .lastName("One")
-						                                 .email("user1@test.com")
-						                                 .password("password123")
-						                                 .phoneNumber("+2342222222222")
-						                                 .build())))
-		       .andExpect(status().isCreated())
-				.andReturn();
+				                                        .contentType(MediaType.APPLICATION_JSON)
+				                                        .content(objectMapper.writeValueAsString(
+						                                        CreateUserRequest.builder()
+						                                                         .firstName("User")
+						                                                         .lastName("One")
+						                                                         .email("user1@test.com")
+						                                                         .password("password123")
+						                                                         .phoneNumber("+2342222222222")
+						                                                         .build())))
+		                               .andExpect(status().isCreated())
+		                               .andReturn();
 
 		MvcResult user2Result = mockMvc.perform(post("/api/v1/auth/register")
-				                .contentType(MediaType.APPLICATION_JSON)
-				                .content(objectMapper.writeValueAsString(
-						                CreateUserRequest.builder()
-						                                 .firstName("User")
-						                                 .lastName("Two")
-						                                 .email("user2@test.com")
-						                                 .password("password123")
-						                                 .phoneNumber("+2343333333333")
-						                                 .build())))
-		       .andExpect(status().isCreated())
-				.andReturn();
+				                                        .contentType(MediaType.APPLICATION_JSON)
+				                                        .content(objectMapper.writeValueAsString(
+						                                        CreateUserRequest.builder()
+						                                                         .firstName("User")
+						                                                         .lastName("Two")
+						                                                         .email("user2@test.com")
+						                                                         .password("password123")
+						                                                         .phoneNumber("+2343333333333")
+						                                                         .build())))
+		                               .andExpect(status().isCreated())
+		                               .andReturn();
 
 		String user1Token = extractTokenFromMvcResult(user1Result);
 		String user2Token = extractTokenFromMvcResult(user2Result);
@@ -322,17 +318,17 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		Long eventId = objectMapper.readTree(eventResult.getResponse().getContentAsString()).get("id").asLong();
 
 		MvcResult cancelUserResult = mockMvc.perform(post("/api/v1/auth/register")
-				                .contentType(MediaType.APPLICATION_JSON)
-				                .content(objectMapper.writeValueAsString(
-						                CreateUserRequest.builder()
-						                                 .firstName("Cancel")
-						                                 .lastName("Tester")
-						                                 .email("cancel@test.com")
-						                                 .password("password123")
-						                                 .phoneNumber("+2344444444444")
-						                                 .build())))
-		       .andExpect(status().isCreated())
-				.andReturn();
+				                                             .contentType(MediaType.APPLICATION_JSON)
+				                                             .content(objectMapper.writeValueAsString(
+						                                             CreateUserRequest.builder()
+						                                                              .firstName("Cancel")
+						                                                              .lastName("Tester")
+						                                                              .email("cancel@test.com")
+						                                                              .password("password123")
+						                                                              .phoneNumber("+2344444444444")
+						                                                              .build())))
+		                                    .andExpect(status().isCreated())
+		                                    .andReturn();
 
 		String userToken = extractTokenFromMvcResult(cancelUserResult);
 
@@ -378,29 +374,6 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		assertThat(releasedSeats).allMatch(s -> s.getSeatStatus() == SeatStatus.AVAILABLE);
 		assertThat(releasedSeats).allMatch(s -> s.getHeldByUser() == null);
 		assertThat(releasedSeats).allMatch(s -> s.getBooking() == null);
-	}
-
-	private String getAdminToken() throws Exception {
-		User admin = userRepository.save(User.builder()
-		                                     .firstName("Admin")
-		                                     .lastName("User")
-		                                     .email("admin@test.com")
-		                                     .passwordHash(passwordEncoder.encode("password123"))
-		                                     .role(Role.ADMIN)
-		                                     .build());
-
-		LoginRequest adminLoginRequest = LoginRequest.builder()
-		                                             .email(admin.getEmail())
-		                                             .password("password123")
-		                                             .build();
-
-		MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/login")
-				                                           .contentType(MediaType.APPLICATION_JSON)
-				                                           .content(objectMapper.writeValueAsString(adminLoginRequest)))
-		                                  .andExpect(status().isOk())
-		                                  .andReturn();
-
-		return extractTokenFromMvcResult(registerResult);
 	}
 
 	private String extractTokenFromMvcResult(MvcResult mvcResult) throws UnsupportedEncodingException {

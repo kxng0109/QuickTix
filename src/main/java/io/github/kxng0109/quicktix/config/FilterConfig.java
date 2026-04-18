@@ -3,10 +3,12 @@ package io.github.kxng0109.quicktix.config;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.github.kxng0109.quicktix.filter.IPRateLimiterFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.function.Supplier;
 
@@ -42,7 +44,10 @@ import java.util.function.Supplier;
  * @see BucketConfiguration
  */
 @Configuration
+@RequiredArgsConstructor
 public class FilterConfig {
+
+	private final ObjectMapper objectMapper;
 
 	@Bean
 	public FilterRegistrationBean<IPRateLimiterFilter> rateLimiterFilter(
@@ -50,7 +55,7 @@ public class FilterConfig {
 			@Qualifier("ipBucketConfiguration") Supplier<BucketConfiguration> bucketConfiguration
 	) {
 		FilterRegistrationBean<IPRateLimiterFilter> registrationBean = new FilterRegistrationBean<>();
-		registrationBean.setFilter(new IPRateLimiterFilter(proxyManager, bucketConfiguration));
+		registrationBean.setFilter(new IPRateLimiterFilter(proxyManager, bucketConfiguration, objectMapper));
 		// Target API endpoints ONLY (Ignore Swagger, Actuator, etc.)
 		registrationBean.addUrlPatterns("/api/v1/*");
 		// Set the order. Setting it to 1 ensures it runs very early in the chain,

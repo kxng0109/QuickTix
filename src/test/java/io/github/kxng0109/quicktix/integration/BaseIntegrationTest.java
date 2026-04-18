@@ -1,12 +1,22 @@
 package io.github.kxng0109.quicktix.integration;
 
+import io.github.kxng0109.quicktix.dto.request.LoginRequest;
+import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.enums.Role;
+import io.github.kxng0109.quicktix.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Base class for all integration tests.
@@ -40,4 +50,48 @@ public abstract class BaseIntegrationTest {
 
 	@Autowired
 	protected ObjectMapper objectMapper;
+
+	@Autowired
+	protected UserRepository userRepository;
+
+	@Autowired
+	protected PasswordEncoder passwordEncoder;
+
+	protected String getUserToken() throws Exception{
+		LoginRequest adminLoginRequest = LoginRequest.builder()
+		                                             .email("jane.smith@example.com")
+		                                             .password("password123")
+		                                             .build();
+
+		MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/login")
+				                                           .contentType(MediaType.APPLICATION_JSON)
+				                                           .content(objectMapper.writeValueAsString(adminLoginRequest)))
+		                                  .andExpect(status().isOk())
+		                                  .andReturn();
+
+		return objectMapper.readTree(registerResult.getResponse().getContentAsString()).get("token").asText();
+	}
+
+	protected String getAdminToken() throws Exception {
+		userRepository.save(User.builder()
+		                                     .firstName("Admin")
+		                                     .lastName("User")
+		                                     .email("admin@test.com")
+		                                     .passwordHash(passwordEncoder.encode("password123"))
+		                                     .role(Role.ADMIN)
+		                                     .build());
+
+		LoginRequest adminLoginRequest = LoginRequest.builder()
+		                                             .email("admin@test.com")
+		                                             .password("password123")
+		                                             .build();
+
+		MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/login")
+				                                           .contentType(MediaType.APPLICATION_JSON)
+				                                           .content(objectMapper.writeValueAsString(adminLoginRequest)))
+		                                  .andExpect(status().isOk())
+		                                  .andReturn();
+
+		return objectMapper.readTree(registerResult.getResponse().getContentAsString()).get("token").asText();
+	}
 }

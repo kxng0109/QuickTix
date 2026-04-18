@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.github.kxng0109.quicktix.config.RateLimitTestConfig;
 import io.github.kxng0109.quicktix.dto.request.InitiateBookingRequest;
 import io.github.kxng0109.quicktix.dto.response.BookingResponse;
 import io.github.kxng0109.quicktix.dto.response.PaymentResponse;
@@ -21,7 +22,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -38,6 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(BookingController.class)
+@ActiveProfiles("test")
+@Import(RateLimitTestConfig.class)
 public class BookingControllerTest {
 
 	private final Long bookingId = 100L;

@@ -90,42 +90,4 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 
 		assertThat(userRepository.findByEmail("jane.smith@example.com")).isEmpty();
 	}
-
-	private String getUserToken() throws Exception{
-		LoginRequest adminLoginRequest = LoginRequest.builder()
-		                                             .email("jane.smith@example.com")
-		                                             .password("password123")
-		                                             .build();
-
-		MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/login")
-				                                           .contentType(MediaType.APPLICATION_JSON)
-				                                           .content(objectMapper.writeValueAsString(adminLoginRequest)))
-		                                  .andExpect(status().isOk())
-		                                  .andReturn();
-
-		return objectMapper.readTree(registerResult.getResponse().getContentAsString()).get("token").asText();
-	}
-
-	private String getAdminToken() throws Exception {
-		User admin = userRepository.save(User.builder()
-		                                     .firstName("Admin")
-		                                     .lastName("User")
-		                                     .email("admin@test.com")
-		                                     .passwordHash(passwordEncoder.encode("password123"))
-		                                     .role(Role.ADMIN)
-		                                     .build());
-
-		LoginRequest adminLoginRequest = LoginRequest.builder()
-		                                .email("admin@test.com")
-		                                .password("password123")
-		                                .build();
-
-		MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/login")
-				                                           .contentType(MediaType.APPLICATION_JSON)
-				                                           .content(objectMapper.writeValueAsString(adminLoginRequest)))
-		                                  .andExpect(status().isOk())
-		                                  .andReturn();
-
-		return objectMapper.readTree(registerResult.getResponse().getContentAsString()).get("token").asText();
-	}
 }

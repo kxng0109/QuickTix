@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.kxng0109.quicktix.config.RateLimitTestConfig;
 import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
 import io.github.kxng0109.quicktix.dto.response.BookingResponse;
 import io.github.kxng0109.quicktix.dto.response.UserResponse;
@@ -17,10 +18,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -36,6 +39,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserController.class)
+@ActiveProfiles("test")
+@Import(RateLimitTestConfig.class)
 public class UserControllerTest {
 
 	private final Long userId = 100L;

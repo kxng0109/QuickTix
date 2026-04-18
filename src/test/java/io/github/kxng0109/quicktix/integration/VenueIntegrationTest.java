@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,7 +28,7 @@ public class VenueIntegrationTest extends BaseIntegrationTest {
 		                                               .build();
 
 		mockMvc.perform(post("/api/v1/venues")
-				                .with(user("admin@test.com").roles("ADMIN"))
+				                .header("Authorization", "Bearer " + getAdminToken())
 				                .contentType(MediaType.APPLICATION_JSON)
 				                .content(objectMapper.writeValueAsString(request)))
 		       .andExpect(status().isCreated())

@@ -1,6 +1,5 @@
 package io.github.kxng0109.quicktix.filter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.ConsumptionProbe;
@@ -14,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;

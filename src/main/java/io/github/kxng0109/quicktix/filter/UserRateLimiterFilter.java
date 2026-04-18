@@ -16,8 +16,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -56,13 +60,15 @@ public class UserRateLimiterFilter extends OncePerRequestFilter {
 
 	private final ProxyManager<byte[]> proxyManager;
 	private final Supplier<BucketConfiguration> bucketConfiguration;
+	private final ObjectMapper objectMapper;
 
 	public UserRateLimiterFilter(
 			ProxyManager<byte[]> proxyManager,
-			@Qualifier("userBucketConfiguration") Supplier<BucketConfiguration> bucketConfiguration
-	) {
+			@Qualifier("userBucketConfiguration") Supplier<BucketConfiguration> bucketConfiguration,
+			ObjectMapper objectMapper) {
 		this.proxyManager = proxyManager;
 		this.bucketConfiguration = bucketConfiguration;
+		this.objectMapper = objectMapper;
 	}
 
 	@Override
@@ -73,10 +79,10 @@ public class UserRateLimiterFilter extends OncePerRequestFilter {
 	) throws ServletException, IOException {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 		if (
-			auth == null
-			|| !auth.isAuthenticated()
-			|| Objects.equals(auth.getPrincipal(), "anonymousUser")
-			|| auth.getAuthorities().isEmpty()
+				auth == null
+						|| !auth.isAuthenticated()
+						|| Objects.equals(auth.getPrincipal(), "anonymousUser")
+						|| auth.getAuthorities().isEmpty()
 		) {
 			filterChain.doFilter(request, response);
 			return;
@@ -111,10 +117,16 @@ public class UserRateLimiterFilter extends OncePerRequestFilter {
 			);
 			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-			String jsonPayload = String.format(
-					"{\"statusCode\": 429, \"message\": \"Too many requests. Try again in %d seconds.\", \"path\": \"%s\"}",
-					timeLeftInSeconds, request.getRequestURI()
+			Map<String, Object> errorDetails = new LinkedHashMap<>();
+			errorDetails.put("timestamp", OffsetDateTime.now().toString());
+			errorDetails.put("statusCode", HttpStatus.TOO_MANY_REQUESTS.value());
+			errorDetails.put("error", HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase());
+			errorDetails.put("message",
+			                 String.format("Too many requests. Try again in %d seconds.", timeLeftInSeconds)
 			);
+			errorDetails.put("path", request.getRequestURI());
+
+			String jsonPayload = objectMapper.writeValueAsString(errorDetails);
 			response.getWriter().write(jsonPayload);
 		}
 

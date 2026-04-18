@@ -1,5 +1,6 @@
 package io.github.kxng0109.quicktix.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.ConsumptionProbe;
@@ -15,6 +16,9 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -50,6 +54,7 @@ public class IPRateLimiterFilter extends OncePerRequestFilter {
 
 	private final ProxyManager<byte[]> proxyManager;
 	private final Supplier<BucketConfiguration> bucketConfiguration;
+	private final ObjectMapper objectMapper;
 
 	@Override
 	protected void doFilterInternal(
@@ -87,10 +92,16 @@ public class IPRateLimiterFilter extends OncePerRequestFilter {
 			);
 			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-			String jsonPayload = String.format(
-					"{\"statusCode\": 429, \"message\": \"Too many requests. Try again in %d seconds.\", \"path\": \"%s\"}",
-					timeLeftInSeconds, request.getRequestURI()
+			Map<String, Object> errorDetails = new LinkedHashMap<>();
+			errorDetails.put("timestamp", OffsetDateTime.now().toString());
+			errorDetails.put("statusCode", HttpStatus.TOO_MANY_REQUESTS.value());
+			errorDetails.put("error", HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase());
+			errorDetails.put("message",
+			                 String.format("Too many requests. Try again in %d seconds.", timeLeftInSeconds)
 			);
+			errorDetails.put("path", request.getRequestURI());
+
+			String jsonPayload = objectMapper.writeValueAsString(errorDetails);
 			response.getWriter().write(jsonPayload);
 		}
 	}

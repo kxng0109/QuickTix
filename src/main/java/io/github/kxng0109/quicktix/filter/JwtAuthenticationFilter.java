@@ -1,6 +1,5 @@
 package io.github.kxng0109.quicktix.filter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.service.JwtService;
 import jakarta.servlet.FilterChain;
@@ -18,6 +17,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -47,7 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private final JwtService jwtService;
 	private final UserDetailsService userDetailsService;
 	private final StringRedisTemplate stringRedisTemplate;
-	private final ObjectMapper objectMapper = new ObjectMapper();
+	private final ObjectMapper objectMapper;
 
 	/**
 	 * Process each request and authenticate if valid JWT is present.
@@ -82,15 +82,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 		if (isBlacklisted) {
 			log.warn("Attempted use of blacklisted token.");
-			stringRedisTemplate.delete("blacklist:" + token);
 			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
 			Map<String, Object> errorDetails = new LinkedHashMap<>();
-			errorDetails.put("timestamp", OffsetDateTime.now());
+			errorDetails.put("timestamp", OffsetDateTime.now().toString());
 			errorDetails.put("statusCode", 401);
 			errorDetails.put("error", "Unauthorized");
-			errorDetails.put("message", "Authentication required. Please provide a valid token.");
+			errorDetails.put("message", "Token has been invalidated via logout.");
 			errorDetails.put("path", request.getRequestURI());
 
 			String jsonPayload = objectMapper.writeValueAsString(errorDetails);

@@ -4,7 +4,7 @@ import io.github.kxng0109.quicktix.filter.HoldSeatRateLimiterFilter;
 import io.github.kxng0109.quicktix.filter.UserRateLimiterFilter;
 import io.github.kxng0109.quicktix.security.JwtAccessDeniedHandler;
 import io.github.kxng0109.quicktix.security.JwtAuthenticationEntryPoint;
-import io.github.kxng0109.quicktix.security.JwtAuthenticationFilter;
+import io.github.kxng0109.quicktix.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

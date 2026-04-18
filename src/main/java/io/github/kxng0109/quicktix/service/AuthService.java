@@ -5,15 +5,20 @@ import io.github.kxng0109.quicktix.dto.request.LoginRequest;
 import io.github.kxng0109.quicktix.dto.response.AuthResponse;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.Role;
+import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.UserExistsException;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.util.Objects;
 
 /**
  * Service responsible for user identity and access management.
@@ -31,6 +36,7 @@ public class AuthService {
 	private final AuthenticationManager authenticationManager;
 	private final PasswordEncoder passwordEncoder;
 	private final UserRepository userRepository;
+	private final StringRedisTemplate stringRedisTemplate;
 
 
 	/**
@@ -59,7 +65,7 @@ public class AuthService {
 		                .passwordHash(passwordEncoder.encode(request.password()))
 		                .phoneNumber(phoneNumber)
 		                .role(Role.USER)
-						.isActive(true)
+		                .isActive(true)
 		                .build();
 
 		User newUser = userRepository.save(user);
@@ -89,6 +95,31 @@ public class AuthService {
 		User user = (User) authentication.getPrincipal();
 
 		return buildAuthResponse(user);
+	}
+
+	public void handleLogout(String token, User currentUser) {
+		if (token == null || !token.startsWith("Bearer ") || !jwtService.isTokenValid(token.substring(7), currentUser)) {
+			throw new InvalidOperationException("Invalid token!");
+		}
+		token = token.substring(7);
+
+		long ttlSeconds = jwtService.getTokenExpirationInSeconds(token) - (System.currentTimeMillis() / 1000);
+
+		if(ttlSeconds <= 0) {
+			throw new InvalidOperationException("Token is already expired!");
+		}
+
+		boolean isBlacklisted = Objects.equals(
+				Boolean.TRUE,
+				stringRedisTemplate.opsForValue()
+				                   .setIfAbsent(
+						                   "blacklist:" + token,
+						                   "blacklisted",
+						                   Duration.ofSeconds(ttlSeconds)
+				                   )
+		);
+
+		if(!isBlacklisted) throw new InvalidOperationException("Token previously blacklisted!");
 	}
 
 	private AuthResponse buildAuthResponse(User user) {

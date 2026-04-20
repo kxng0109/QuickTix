@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.Objects;
 
 /**
@@ -114,7 +115,7 @@ public class AuthService {
 				stringRedisTemplate.opsForValue()
 				                   .setIfAbsent(
 						                   "blacklist:" + token,
-						                   "blacklisted",
+						                   OffsetDateTime.now().toString(),
 						                   Duration.ofSeconds(ttlSeconds)
 				                   )
 		);

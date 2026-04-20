@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.filter;
 
 import io.github.kxng0109.quicktix.entity.User;
+import io.github.kxng0109.quicktix.exception.JwtExpiredException;
 import io.github.kxng0109.quicktix.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,12 +15,14 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -75,6 +78,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		// Extract token (remove "Bearer " prefix)
 		final String token = authHeader.substring(7);
 
+		if(jwtService.isTokenExpired(token)) throw new JwtExpiredException("Invalid token");
+
 		boolean isBlacklisted = Objects.equals(
 				Boolean.TRUE,
 				stringRedisTemplate.hasKey("blacklist:" + token)
@@ -104,6 +109,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		// If email extracted and user not already authenticated
 		if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 			User user = (User) userDetailsService.loadUserByUsername(email);
+
+			if(!user.isActive()) {
+				stringRedisTemplate.opsForValue()
+						.setIfAbsent("blacklist:" + token,
+						             OffsetDateTime.now().toString(),
+								     Duration.ofSeconds(
+											 jwtService.getTokenExpirationInSeconds(token) -
+													 (System.currentTimeMillis() / 1000)
+								     )
+						);
+				throw new UsernameNotFoundException(email);
+			}
 
 			if (jwtService.isTokenValid(token, user)) {
 				UsernamePasswordAuthenticationToken authToken =

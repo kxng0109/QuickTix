@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -160,11 +161,20 @@ public class GlobalExceptionHandler {
 		return buildErrorResponse(ex, request, status);
 	}
 
-	@ExceptionHandler(BadCredentialsException.class)
+	@ExceptionHandler(exception = {BadCredentialsException.class, UsernameNotFoundException.class})
 	public ResponseEntity<ErrorResponse> handleBadCredentialsException(
 			BadCredentialsException ex,
 			HttpServletRequest request
 	) {
+		HttpStatus status = HttpStatus.UNAUTHORIZED;
+		return buildErrorResponse(ex, request, status);
+	}
+
+	@ExceptionHandler(JwtExpiredException.class)
+	public ResponseEntity<ErrorResponse> handleJwtExpiredException(
+			JwtExpiredException ex,
+			HttpServletRequest request
+	){
 		HttpStatus status = HttpStatus.UNAUTHORIZED;
 		return buildErrorResponse(ex, request, status);
 	}
@@ -177,7 +187,8 @@ public class GlobalExceptionHandler {
 	) {
 		String message = ex.getMessage();
 		//Why let the user know which one was invalid? Just return a generic message
-		if (ex instanceof BadCredentialsException) message = "Invalid email or password";
+		if (ex instanceof BadCredentialsException ||
+				ex instanceof UsernameNotFoundException) message = "Invalid email or password";
 
 		ErrorResponse response = ErrorResponse
 				.builder()

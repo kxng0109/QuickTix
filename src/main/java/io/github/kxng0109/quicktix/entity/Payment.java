@@ -41,8 +41,8 @@ public class Payment {
     @Column(name = "gateway_token")
     private String gatewayToken;
 
-    /*@Column(name = "payment_provider", nullable = false)
-    private PaymentProvider paymentProvider;*/
+    @Column(name = "payment_provider")
+    private PaymentProvider paymentProvider;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false)

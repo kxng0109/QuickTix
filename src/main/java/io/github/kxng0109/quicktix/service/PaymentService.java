@@ -7,6 +7,7 @@ import io.github.kxng0109.quicktix.entity.Booking;
 import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
+import io.github.kxng0109.quicktix.enums.PaymentProvider;
 import io.github.kxng0109.quicktix.enums.PaymentStatus;
 import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.exception.ConflictException;
@@ -128,6 +129,12 @@ public class PaymentService {
 			Payment savedPayment = paymentRepository.save(payment);
 
 			GatewayInitializationResponse gatewayToken = paymentGateway.initializePayment(savedPayment);
+
+			if(gatewayToken.clientSecret().contains("paystack")){
+				savedPayment.setPaymentProvider(PaymentProvider.PAYSTACK);
+			}else if(gatewayToken.clientSecret().startsWith("pi_")){
+				savedPayment.setPaymentProvider(PaymentProvider.STRIPE);
+			}
 
 			savedPayment.setTransactionReference(gatewayToken.transactionId());
 			savedPayment.setGatewayToken(gatewayToken.clientSecret());

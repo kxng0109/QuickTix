@@ -80,7 +80,7 @@ public class PaymentController {
 					example = "4f6a3cc0-5243-4ae2-a7f6-37d0ec4ad877",
 					required = true
 			)
-			@RequestHeader(name = "Idempotency-Key")
+			@RequestHeader(name = "Idempotency-Key", required = false)
 			@NotEmpty(message = "Idempotency key is required")
 			@Size(min = 8, message = "Idempotency key must be at least 8 characters")
 			String idempotencyKey,

@@ -155,7 +155,6 @@ public class RateLimitConfig {
 	@Bean
 	@Profile("!test")
 	public Supplier<BucketConfiguration> ipBucketConfiguration() {
-		System.out.println("yupppp");
 		Bandwidth bandwidth = Bandwidth.builder()
 		                               .capacity(150)
 		                               .refillGreedy(60, Duration.ofMinutes(1))
@@ -242,7 +241,6 @@ public class RateLimitConfig {
 	@Bean("ipBucketConfiguration")
 	@Profile("test")
 	public Supplier<BucketConfiguration> ipBucketConfigurationTest() {
-		System.out.println("yeah");
 		return () -> BucketConfiguration.builder()
 		                                .addLimit(Bandwidth.builder()
 		                                                   .capacity(15)

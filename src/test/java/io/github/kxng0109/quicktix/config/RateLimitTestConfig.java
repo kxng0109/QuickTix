@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 @Configuration
-@Profile("test")
+@Profile("slice-test")
 public class RateLimitTestConfig {
 
 	@Bean

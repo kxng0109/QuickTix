@@ -1,16 +1,11 @@
 package io.github.kxng0109.quicktix.integration;
 
 import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
-import io.github.kxng0109.quicktix.dto.request.LoginRequest;
 import io.github.kxng0109.quicktix.entity.User;
-import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -21,25 +16,11 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 
 	@Autowired
 	private UserRepository userRepository;
-	@Autowired
-	private PasswordEncoder passwordEncoder;
-
-	private User savedUser;
-
-	@BeforeEach
-	void setUp() {
-		User user = User.builder()
-		                .firstName("Jane")
-		                .lastName("Smith")
-		                .email("jane.smith@example.com")
-		                .passwordHash(passwordEncoder.encode("password123"))
-		                .build();
-		savedUser = userRepository.save(user);
-	}
 
 	@Test
 	void getUserById_shouldReturnUser_whenUserExists() throws Exception {
 		String adminToken = getAdminToken();
+		User savedUser = createUser("jane.smith@example.com");
 
 		mockMvc.perform(get("/api/v1/users/{id}", savedUser.getId())
 				                .header("Authorization", "Bearer " + adminToken))
@@ -67,6 +48,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 		                                                   .password("password123")
 		                                                   .phoneNumber("+2345555555555")
 		                                                   .build();
+		User savedUser = createUser("jane.smith@example.com");
 
 		mockMvc.perform(put("/api/v1/users/{id}", savedUser.getId())
 				                .contentType(MediaType.APPLICATION_JSON)
@@ -84,7 +66,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 	@Test
 	void deleteUserMe_shouldRemoveUserFromDatabase_whenUserHasNoBookings() throws Exception {
 		mockMvc.perform(delete("/api/v1/users/me")
-				                .header("Authorization", "Bearer " + getUserToken())
+				                .header("Authorization", "Bearer " + createUserAndGetToken("jane.smith@example.com"))
 		       )
 		       .andExpect(status().isNoContent());
 

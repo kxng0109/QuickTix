@@ -1,6 +1,5 @@
 package io.github.kxng0109.quicktix.controller;
 
-import io.github.kxng0109.quicktix.config.RateLimitTestConfig;
 import io.github.kxng0109.quicktix.controller.webhook.StripeWebhookController;
 import io.github.kxng0109.quicktix.service.CustomUserDetailsService;
 import io.github.kxng0109.quicktix.service.JwtService;
@@ -8,9 +7,7 @@ import io.github.kxng0109.quicktix.service.PaymentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -18,8 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(StripeWebhookController.class)
-@ActiveProfiles("test")
-@Import(RateLimitTestConfig.class)
+@RateLimitedWebTest
 public class StripeWebhookControllerTest {
 
 	@Autowired

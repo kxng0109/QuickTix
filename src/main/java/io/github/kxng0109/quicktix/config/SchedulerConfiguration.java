@@ -14,7 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @Configuration
 @EnableScheduling
-@Profile("!test")
+@Profile({"!test", "!slice-test"})
 public class SchedulerConfiguration {
 
 }

@@ -51,7 +51,7 @@ import java.util.function.Supplier;
  * @see io.lettuce.core.RedisClient
  */
 @Configuration
-@Profile("!test")
+@Profile("!slice-test")
 public class RateLimitConfig {
 
 	@Value("${spring.data.redis.host}")
@@ -116,7 +116,7 @@ public class RateLimitConfig {
 	 *
 	 * @param redisClient the client used to connect to the Redis instance; cannot be {@code null}.
 	 *                    This client must be properly initialized and connected to a running Redis server.
-	 * @return a fully configured {@link ProxyManager<byte[]> ProxyManager} instance that can be used to create and manage
+	 * @return a fully configured {@link ProxyManager ProxyManager} instance that can be used to create and manage
 	 * rate-limited {@code Bucket}s.
 	 * @throws IllegalArgumentException if the {@code redisClient} is {@code null}.
 	 * @implNote Ensure the {@code RedisClient} points to a highly available Redis instance for
@@ -153,7 +153,9 @@ public class RateLimitConfig {
 	 * @see Supplier
 	 */
 	@Bean
+	@Profile("!test")
 	public Supplier<BucketConfiguration> ipBucketConfiguration() {
+		System.out.println("yupppp");
 		Bandwidth bandwidth = Bandwidth.builder()
 		                               .capacity(150)
 		                               .refillGreedy(60, Duration.ofMinutes(1))
@@ -190,6 +192,7 @@ public class RateLimitConfig {
 	 * @see Bandwidth
 	 */
 	@Bean
+	@Profile("!test")
 	public Supplier<BucketConfiguration> userBucketConfiguration() {
 		Bandwidth bandwidth = Bandwidth.builder()
 		                               .capacity(60)
@@ -224,6 +227,7 @@ public class RateLimitConfig {
 	 * @see RateLimitConfig#proxyManager
 	 */
 	@Bean
+	@Profile("!test")
 	public Supplier<BucketConfiguration> holdSeatsBucketConfiguration() {
 		Bandwidth bandwidth = Bandwidth.builder()
 		                               .capacity(5)
@@ -232,6 +236,41 @@ public class RateLimitConfig {
 
 		return () -> BucketConfiguration.builder()
 		                                .addLimit(bandwidth)
+		                                .build();
+	}
+
+	@Bean("ipBucketConfiguration")
+	@Profile("test")
+	public Supplier<BucketConfiguration> ipBucketConfigurationTest() {
+		System.out.println("yeah");
+		return () -> BucketConfiguration.builder()
+		                                .addLimit(Bandwidth.builder()
+		                                                   .capacity(15)
+		                                                   .refillGreedy(15, Duration.ofHours(1))
+		                                                   .build())
+		                                .build();
+	}
+
+	@Bean("userBucketConfiguration")
+	@Profile("test")
+	public Supplier<BucketConfiguration> userBucketConfigurationTest() {
+		return () -> BucketConfiguration.builder()
+		                                .addLimit(
+				                                Bandwidth.builder()
+				                                         .capacity(14)
+				                                         .refillGreedy(14, Duration.ofHours(1))
+				                                         .build())
+		                                .build();
+	}
+
+	@Bean("holdSeatsBucketConfiguration")
+	@Profile("test")
+	public Supplier<BucketConfiguration> holdSeatsBucketConfigurationTest() {
+		return () -> BucketConfiguration.builder()
+		                                .addLimit(Bandwidth.builder()
+		                                                   .capacity(5)
+		                                                   .refillIntervally(1, Duration.ofMinutes(10))
+		                                                   .build())
 		                                .build();
 	}
 }

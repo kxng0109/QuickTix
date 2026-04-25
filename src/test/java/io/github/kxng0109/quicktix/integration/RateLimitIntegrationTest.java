@@ -1,8 +1,11 @@
 package io.github.kxng0109.quicktix.integration;
 
+import io.github.kxng0109.quicktix.dto.request.LoginRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -12,15 +15,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class RateLimitIntegrationTest extends BaseIntegrationTest {
 
+	@Autowired
+	private ObjectMapper objectMapper;
+
 	@Test
-	@DisplayName("Tier 1: IP DDoS Shield should block traffic after 7 requests")
+	@DisplayName("Tier 1: IP DDoS Shield should block traffic after 15 requests")
 	void testIpBasedRateLimit() throws Exception {
 		String testIp = "192.168.1.55";
 
-		for (int i = 1; i <= 7; i++) {
+		for (int i = 1; i <= 15; i++) {
 			mockMvc.perform(post("/api/v1/auth/login")
 					                .contentType(MediaType.APPLICATION_JSON)
-					                .content("{\"email\":\"test@test.com\",\"password\":\"password\"}")
+					                .content(
+											objectMapper.writeValueAsString(
+												LoginRequest.builder().email("test@test.com").password("password").build()
+											)
+					                )
 					                .with(request -> {
 						                request.setRemoteAddr(testIp);
 						                return request;
@@ -30,7 +40,11 @@ class RateLimitIntegrationTest extends BaseIntegrationTest {
 
 		mockMvc.perform(post("/api/v1/auth/login")
 				                .contentType(MediaType.APPLICATION_JSON)
-				                .content("{\"email\":\"test@test.com\",\"password\":\"password\"}")
+				                .content(
+						                objectMapper.writeValueAsString(
+								                LoginRequest.builder().email("test@test.com").password("password").build()
+						                )
+				                )
 				                .with(request -> {
 					                request.setRemoteAddr(testIp);
 					                return request;
@@ -40,15 +54,15 @@ class RateLimitIntegrationTest extends BaseIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("Tier 2: Global User Shield should block authenticated scraping after 6 requests")
+	@DisplayName("Tier 2: Global User Shield should block authenticated scraping after 14 requests")
 	void testUserBasedRateLimit() throws Exception {
-		String testEmail = "scraper@unilag.edu";
+		String userToken = createUserAndGetToken("scraper@unknown.domain");
 
-		// Fire 6 authenticated requests
-		for (int i = 1; i <= 6; i++) {
-			mockMvc.perform(get("/api/v1/events/upcoming")
-					                .with(user(testEmail).roles("USER"))
+		// Fire 14 authenticated requests
+		for (int i = 1; i <= 14; i++) {
+			mockMvc.perform(get("/api/v1/users/me")
 					                // Ensure the IP filter doesn't trip first by using a fresh IP
+					                .header("Authorization", "Bearer " + userToken)
 					                .with(request -> {
 						                request.setRemoteAddr("10.0.0.99");
 						                return request;
@@ -56,9 +70,9 @@ class RateLimitIntegrationTest extends BaseIntegrationTest {
 			       .andExpect(status().isOk());
 		}
 
-		// Request 7 MUST fail
-		mockMvc.perform(get("/api/v1/events/upcoming")
-				                .with(user(testEmail).roles("USER"))
+		// Request 15 MUST fail
+		mockMvc.perform(get("/api/v1/users/me")
+				                .header("Authorization", "Bearer " + userToken)
 				                .with(request -> {
 					                request.setRemoteAddr("10.0.0.99");
 					                return request;

@@ -1,8 +1,5 @@
 package io.github.kxng0109.quicktix.controller;
 
-import io.github.kxng0109.quicktix.config.RateLimitTestConfig;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.ObjectMapper;
 import io.github.kxng0109.quicktix.dto.request.CreateUserRequest;
 import io.github.kxng0109.quicktix.dto.request.LoginRequest;
@@ -27,8 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
-@ActiveProfiles("test")
-@Import(RateLimitTestConfig.class)
+@RateLimitedWebTest
 public class AuthControllerTest {
 
 	@Autowired

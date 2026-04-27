@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,7 @@ import java.security.MessageDigest;
 @RequestMapping("/api/v1/webhooks/paystack")
 @Slf4j
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "payment.gateway.provider", havingValue = "paystack")
 @Hidden
 public class PaystackWebhookController {
 

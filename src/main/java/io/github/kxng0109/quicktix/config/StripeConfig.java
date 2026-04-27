@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.config;
 
 import com.stripe.StripeClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
  * the application lifecycle.
  */
 @Configuration
+@ConditionalOnProperty(name = "payment.gateway.provider", havingValue = "stripe", matchIfMissing = true)
 public class StripeConfig {
 
 	@Value("${stripe.api.key}")

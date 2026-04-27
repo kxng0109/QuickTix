@@ -63,6 +63,33 @@ public class RateLimitConfig {
 	@Value("${spring.data.redis.password:}")
 	private String redisPassword;
 
+	@Value("${rate-limit.ip.capacity:150}")
+	private int ipCapacity;
+
+	@Value("${rate-limit.ip.refill:60}")
+	private int ipRefillAmount;
+
+	@Value("${rate-limit.ip.interval:1}")
+	private int ipRefillInterval;
+
+	@Value("${rate-limit.user.capacity:60}")
+	private int userCapacity;
+
+	@Value("${rate-limit.user.refill:30}")
+	private int userRefillAmount;
+
+	@Value("${rate-limit.user.interval:1}")
+	private int userRefillInterval;
+
+	@Value("${rate-limit.hold-seat.capacity:5}")
+	private int holdSeatCapacity;
+
+	@Value("${rate-limit.hold-seat.refill:5}")
+	private int holdSeatRefillAmount;
+
+	@Value("${rate-limit.hold-seat.interval:1}")
+	private int holdSeatRefillInterval;
+
 	/**
 	 * Creates and configures a {@link RedisClient} instance for interacting with the Redis server.
 	 * <p>
@@ -153,11 +180,10 @@ public class RateLimitConfig {
 	 * @see Supplier
 	 */
 	@Bean
-	@Profile("!test")
 	public Supplier<BucketConfiguration> ipBucketConfiguration() {
 		Bandwidth bandwidth = Bandwidth.builder()
-		                               .capacity(150)
-		                               .refillGreedy(60, Duration.ofMinutes(1))
+		                               .capacity(ipCapacity)
+		                               .refillGreedy(ipRefillAmount, Duration.ofMinutes(ipRefillInterval))
 		                               .build();
 
 		return () -> BucketConfiguration.builder()
@@ -191,11 +217,10 @@ public class RateLimitConfig {
 	 * @see Bandwidth
 	 */
 	@Bean
-	@Profile("!test")
 	public Supplier<BucketConfiguration> userBucketConfiguration() {
 		Bandwidth bandwidth = Bandwidth.builder()
-		                               .capacity(60)
-		                               .refillGreedy(30, Duration.ofMinutes(1))
+		                               .capacity(userCapacity)
+		                               .refillGreedy(userRefillAmount, Duration.ofMinutes(userRefillInterval))
 		                               .build();
 
 		return () -> BucketConfiguration.builder()
@@ -226,49 +251,14 @@ public class RateLimitConfig {
 	 * @see RateLimitConfig#proxyManager
 	 */
 	@Bean
-	@Profile("!test")
 	public Supplier<BucketConfiguration> holdSeatsBucketConfiguration() {
 		Bandwidth bandwidth = Bandwidth.builder()
-		                               .capacity(5)
-		                               .refillIntervally(5, Duration.ofMinutes(1))
+		                               .capacity(holdSeatCapacity)
+		                               .refillIntervally(holdSeatRefillAmount, Duration.ofMinutes(holdSeatRefillInterval))
 		                               .build();
 
 		return () -> BucketConfiguration.builder()
 		                                .addLimit(bandwidth)
-		                                .build();
-	}
-
-	@Bean("ipBucketConfiguration")
-	@Profile("test")
-	public Supplier<BucketConfiguration> ipBucketConfigurationTest() {
-		return () -> BucketConfiguration.builder()
-		                                .addLimit(Bandwidth.builder()
-		                                                   .capacity(15)
-		                                                   .refillGreedy(15, Duration.ofHours(1))
-		                                                   .build())
-		                                .build();
-	}
-
-	@Bean("userBucketConfiguration")
-	@Profile("test")
-	public Supplier<BucketConfiguration> userBucketConfigurationTest() {
-		return () -> BucketConfiguration.builder()
-		                                .addLimit(
-				                                Bandwidth.builder()
-				                                         .capacity(14)
-				                                         .refillGreedy(14, Duration.ofHours(1))
-				                                         .build())
-		                                .build();
-	}
-
-	@Bean("holdSeatsBucketConfiguration")
-	@Profile("test")
-	public Supplier<BucketConfiguration> holdSeatsBucketConfigurationTest() {
-		return () -> BucketConfiguration.builder()
-		                                .addLimit(Bandwidth.builder()
-		                                                   .capacity(5)
-		                                                   .refillIntervally(1, Duration.ofMinutes(10))
-		                                                   .build())
 		                                .build();
 	}
 }

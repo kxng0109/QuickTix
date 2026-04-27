@@ -24,7 +24,7 @@ import java.util.Map;
  * set to {@code paystack}.
  */
 @Service
-@Profile({"!test & !mock"})
+@Profile({"!test & !mock-stress-test"})
 @ConditionalOnProperty(name = "payment.gateway.provider", havingValue = "paystack")
 @Slf4j
 public class PaystackPaymentGateway implements PaymentGateway {

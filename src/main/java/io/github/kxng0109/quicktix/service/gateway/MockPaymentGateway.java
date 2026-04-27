@@ -10,7 +10,7 @@ import java.util.Random;
 import java.util.UUID;
 
 @Service
-@Profile({"test", "mock"})
+@Profile({"test", "mock-stress-test"})
 @Primary
 public class MockPaymentGateway implements PaymentGateway {
 

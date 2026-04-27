@@ -29,7 +29,7 @@ import java.math.BigDecimal;
 @Service
 @RequiredArgsConstructor
 @Primary
-@Profile({"!test & !mock"})
+@Profile({"!test & !mock-stress-test"})
 @ConditionalOnProperty(name = "payment.gateway.provider", havingValue = "stripe", matchIfMissing = true)
 @Slf4j
 public class StripePaymentGateway implements PaymentGateway {

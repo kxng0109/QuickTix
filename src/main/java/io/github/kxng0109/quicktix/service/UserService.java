@@ -10,6 +10,8 @@ import io.github.kxng0109.quicktix.utils.AssertOwnershipOrAdmin;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +57,7 @@ public class UserService {
 	 * @return The user's profile data.
 	 */
 	@Transactional(readOnly = true)
+	@Cacheable(value = "userProfiles", key = "#currentUser.id")
 	public UserResponse getUser(User currentUser) {
 		return buildUserResponse(currentUser);
 	}
@@ -71,7 +74,8 @@ public class UserService {
 	 * @throws UserExistsException if the new email is already registered to another user.
 	 */
 	@Transactional
-	public UserResponse updateUser(CreateUserRequest request, User currentUser){
+	@CacheEvict(value = "userProfiles", key = "#currentUser.id")
+	public UserResponse updateUser(CreateUserRequest request, User currentUser) {
 		return updateUserById(currentUser.getId(), request, currentUser);
 	}
 
@@ -89,6 +93,7 @@ public class UserService {
 	 * @throws UserExistsException if the new email is already registered to another user.
 	 */
 	@Transactional
+	@CacheEvict(value = "userProfiles", key = "#userId")
 	public UserResponse updateUserById(Long userId, CreateUserRequest request, User currentUser) {
 		User user = getUserEntityById(userId);
 
@@ -128,10 +133,12 @@ public class UserService {
 	 * @throws ResourceInUseException if the user has existing bookings.
 	 */
 	@Transactional
+	@CacheEvict(value = "userProfiles", key = "#currentUser.id")
 	public void deleteUser(User currentUser) {
 		User user = userRepository.findByEmail(currentUser.getEmail())
 		                          .orElseThrow(
-				                          () -> new EntityNotFoundException("User not found with email: " + currentUser.getEmail())
+				                          () -> new EntityNotFoundException(
+						                          "User not found with email: " + currentUser.getEmail())
 		                          );
 
 		// Don't delete users with bookings
@@ -160,7 +167,8 @@ public class UserService {
 	 * @throws EntityNotFoundException if the user ID does not exist.
 	 */
 	@Transactional
-	public void forceDeleteUser(Long userId){
+	@CacheEvict(value = "userProfiles", key = "#userId")
+	public void forceDeleteUser(Long userId) {
 		User user = userRepository.findById(userId)
 		                          .orElseThrow(
 				                          () -> new EntityNotFoundException("User not found with ID: " + userId)
@@ -189,7 +197,7 @@ public class UserService {
 	 *
 	 * @param user The {@link User} entity to be irreversibly deactivated.
 	 */
-	private void deactivateUser(User user){
+	private void deactivateUser(User user) {
 		String userEmail = String.format(
 				"deleted_%s@quicktix.internal",
 				UUID.randomUUID()

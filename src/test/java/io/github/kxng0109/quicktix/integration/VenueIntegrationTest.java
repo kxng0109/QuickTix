@@ -3,7 +3,6 @@ package io.github.kxng0109.quicktix.integration;
 import io.github.kxng0109.quicktix.dto.request.CreateVenueRequest;
 import io.github.kxng0109.quicktix.entity.Venue;
 import io.github.kxng0109.quicktix.repositories.VenueRepository;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -44,7 +43,6 @@ public class VenueIntegrationTest extends BaseIntegrationTest {
 	}
 
 	@Test
-	@Disabled
 	void getAllVenues_shouldReturnPagedResults() throws Exception {
 		for (int i = 1; i <= 5; i++) {
 			venueRepository.save(Venue.builder()
@@ -61,12 +59,11 @@ public class VenueIntegrationTest extends BaseIntegrationTest {
 		       .andExpect(status().isOk())
 		       .andExpect(jsonPath("$.content").isArray())
 		       .andExpect(jsonPath("$.content.length()").value(2))
-		       .andExpect(jsonPath("$.page.totalElements").value(5))
-		       .andExpect(jsonPath("$.page.totalPages").value(3));
+		       .andExpect(jsonPath("$.totalElements").value(5))
+		       .andExpect(jsonPath("$.totalPages").value(3));
 	}
 
 	@Test
-	@Disabled
 	void getVenuesByCity_shouldFilterCorrectly() throws Exception {
 		venueRepository.save(
 				Venue.builder().name("Lagos Venue 1").address("Addr").city("Lagos").totalCapacity(1000).build());
@@ -78,6 +75,6 @@ public class VenueIntegrationTest extends BaseIntegrationTest {
 		mockMvc.perform(get("/api/v1/venues/city/{city}", "Lagos"))
 		       .andExpect(status().isOk())
 		       .andExpect(jsonPath("$.content.length()").value(2))
-		       .andExpect(jsonPath("$.page.totalElements").value(2));
+		       .andExpect(jsonPath("$.totalElements").value(2));
 	}
 }

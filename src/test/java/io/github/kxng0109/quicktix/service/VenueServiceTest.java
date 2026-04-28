@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.CreateVenueRequest;
+import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.VenueResponse;
 import io.github.kxng0109.quicktix.entity.Event;
 import io.github.kxng0109.quicktix.entity.Venue;
@@ -110,10 +111,10 @@ public class VenueServiceTest {
 		when(venueRepository.findAll(any(Pageable.class)))
 				.thenReturn(venuePage);
 
-		Page<VenueResponse> response = venueService.getAllVenues(pageable);
+		PagedResponse<VenueResponse> response = venueService.getAllVenues(pageable);
 
 		assertNotNull(response);
-		assertEquals(venue.getName(), response.getContent().getFirst().name());
+		assertEquals(venue.getName(), response.content().getFirst().name());
 
 		verify(venueRepository).findAll(any(Pageable.class));
 	}
@@ -125,10 +126,10 @@ public class VenueServiceTest {
 		when(venueRepository.findByCity(city, pageable))
 				.thenReturn(venuePage);
 
-		Page<VenueResponse> response = venueService.getVenuesByCity(city, pageable);
+		PagedResponse<VenueResponse> response = venueService.getVenuesByCity(city, pageable);
 
 		assertNotNull(response);
-		assertEquals(venue.getName(), response.getContent().getFirst().name());
+		assertEquals(venue.getName(), response.content().getFirst().name());
 
 		verify(venueRepository).findByCity(city, pageable);
 	}

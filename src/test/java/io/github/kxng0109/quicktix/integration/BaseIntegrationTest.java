@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.rabbitmq.RabbitMQContainer;
 import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.ObjectMapper;
 
@@ -43,12 +44,11 @@ public abstract class BaseIntegrationTest {
 			               .asCompatibleSubstituteFor("redis")
 	);
 
-	/*
 	@ServiceConnection
 	static final RabbitMQContainer rabbitmqContainer = new RabbitMQContainer(
 			DockerImageName.parse("heidiks/rabbitmq-delayed-message-exchange:3.13.0-management")
 					.asCompatibleSubstituteFor("rabbitmq")
-	);*/
+	);
 
 	static {
 		postgresqlContainer.start();

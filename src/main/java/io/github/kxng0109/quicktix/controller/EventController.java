@@ -3,6 +3,7 @@ package io.github.kxng0109.quicktix.controller;
 import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
 import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
+import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.service.EventService;
 import io.github.kxng0109.quicktix.service.SeatService;
@@ -122,7 +123,7 @@ public class EventController {
 			@ApiResponse(responseCode = "404", description = "Event not found", content = @Content)
 	})
 	@GetMapping("/{eventId}/seats/available")
-	public ResponseEntity<Page<SeatResponse>> getAllAvailableSeats(
+	public ResponseEntity<PagedResponse<SeatResponse>> getAllAvailableSeats(
 			@Min(value = 1, message = "Event ID must have a value of at least 1") @PathVariable long eventId,
 			Pageable pageable
 	) {

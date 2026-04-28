@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.HoldSeatsRequest;
+import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.entity.*;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
@@ -13,7 +14,6 @@ import io.github.kxng0109.quicktix.repositories.SeatRepository;
 import io.github.kxng0109.quicktix.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -113,10 +113,10 @@ public class SeatServiceTest {
 		when(seatRepository.findByEventIdAndSeatStatus(anyLong(), eq(SeatStatus.AVAILABLE), any(Pageable.class)))
 				.thenReturn(seatPage);
 
-		Page<SeatResponse> responses = seatService.getAvailableSeats(eventId, pageable);
+		PagedResponse<SeatResponse> responses = seatService.getAvailableSeats(eventId, pageable);
 
 		assertNotNull(responses);
-		assertEquals(availableSeats, responses.getTotalElements());
+		assertEquals(availableSeats, responses.totalElements());
 
 		verify(eventRepository).findById(anyLong());
 		verify(seatRepository).findByEventIdAndSeatStatus(anyLong(), eq(SeatStatus.AVAILABLE), any(Pageable.class));

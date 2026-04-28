@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.controller;
 
 import io.github.kxng0109.quicktix.dto.request.CreateVenueRequest;
+import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.VenueResponse;
 import io.github.kxng0109.quicktix.service.VenueService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,7 +13,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -79,7 +79,7 @@ public class VenueController {
 			@ApiResponse(responseCode = "200", description = "Venues retrieved successfully")
 	})
 	@GetMapping
-	public ResponseEntity<Page<VenueResponse>> getAllVenue(
+	public ResponseEntity<PagedResponse<VenueResponse>> getAllVenue(
 			Pageable pageable
 	) {
 		return ResponseEntity.ok(
@@ -95,7 +95,7 @@ public class VenueController {
 			@ApiResponse(responseCode = "200", description = "Venues retrieved successfully")
 	})
 	@GetMapping("/city/{city}")
-	public ResponseEntity<Page<VenueResponse>> getVenuesByCity(
+	public ResponseEntity<PagedResponse<VenueResponse>> getVenuesByCity(
 			@PathVariable String city,
 			Pageable pageable
 	) {

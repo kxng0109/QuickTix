@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kxng0109.quicktix.dto.request.CreateVenueRequest;
+import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.VenueResponse;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.entity.Venue;
@@ -15,7 +16,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -165,7 +165,9 @@ public class VenueControllerTest {
 
 	@Test
 	public void getAllVenue_should_return200OkAndPageOfVenueResponse_whenRequestIsValid() throws Exception {
-		Page<VenueResponse> venueResponsePage = new PageImpl<>(List.of(response));
+		PagedResponse<VenueResponse> venueResponsePage = PagedResponse.from(
+				new PageImpl<>(List.of(response))
+		);
 
 		when(venueService.getAllVenues(any(Pageable.class)))
 				.thenReturn(venueResponsePage);
@@ -180,13 +182,15 @@ public class VenueControllerTest {
 		       .andExpect(jsonPath("$.content.length()").value(1))
 		       .andExpect(jsonPath("$.content[0].id").value(venueId))
 		       .andExpect(jsonPath("$.content[0].name").value(request.name()))
-		       .andExpect(jsonPath("$.page.totalElements").value(1))
-		       .andExpect(jsonPath("$.page.size").value(1));
+		       .andExpect(jsonPath("$.totalElements").value(1))
+		       .andExpect(jsonPath("$.pageSize").value(1));
 	}
 
 	@Test
 	public void getAllVenue_should_useDefaults_whenParamsAreMissing() throws Exception {
-		Page<VenueResponse> venueResponsePage = new PageImpl<>(List.of(response));
+		PagedResponse<VenueResponse> venueResponsePage = PagedResponse.from(
+				new PageImpl<>(List.of(response))
+		);
 		when(venueService.getAllVenues(any(Pageable.class)))
 				.thenReturn(venueResponsePage);
 
@@ -200,7 +204,9 @@ public class VenueControllerTest {
 
 	@Test
 	public void getVenuesByCity_should_return200OkAndPageOfVenueResponse_whenRequestIsValid() throws Exception {
-		Page<VenueResponse> venueResponsePage = new PageImpl<>(List.of(response));
+		PagedResponse<VenueResponse> venueResponsePage = PagedResponse.from(
+				new PageImpl<>(List.of(response))
+		);
 
 		when(venueService.getVenuesByCity(any(String.class), any(Pageable.class)))
 				.thenReturn(venueResponsePage);
@@ -221,7 +227,9 @@ public class VenueControllerTest {
 	public void getVenuesByCity_should_useDefaults_whenPageableParamsAreMissing() throws Exception {
 		String uriTemplate = "/api/v1/venues/city/lagos";
 
-		Page<VenueResponse> venueResponsePage = new PageImpl<>(List.of(response));
+		PagedResponse<VenueResponse> venueResponsePage = PagedResponse.from(
+				new PageImpl<>(List.of(response))
+		);
 
 		when(venueService.getVenuesByCity(any(String.class), any(Pageable.class)))
 				.thenReturn(venueResponsePage);

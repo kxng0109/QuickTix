@@ -5,6 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
 import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
+import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.entity.User;
 import io.github.kxng0109.quicktix.enums.EventStatus;
@@ -304,7 +305,7 @@ public class EventControllerTest {
 
 	@Test
 	public void getAvailableSeats_should_return200OkAndAPageOfSeatResponse_whenIdIsValid() throws Exception {
-		Page<SeatResponse> seatResponsePage = new PageImpl<>(List.of(seatResponse()));
+		PagedResponse<SeatResponse> seatResponsePage = PagedResponse.from(new PageImpl<>(List.of(seatResponse())));
 		when(seatService.getAvailableSeats(anyLong(), any(Pageable.class)))
 				.thenReturn(seatResponsePage);
 
@@ -317,13 +318,13 @@ public class EventControllerTest {
 		       ).andExpect(status().isOk())
 		       .andExpect(jsonPath("$.content").isArray())
 		       .andExpect(jsonPath("$.content.length()").value(1))
-		       .andExpect(jsonPath("$.page.size").value(1))
+		       .andExpect(jsonPath("$.pageSize").value(1))
 		       .andExpect(jsonPath("$.content[0].id").value(seatId));
 	}
 
 	@Test
 	public void getAvailableSeats_should_useDefaults_whenPageableParamsAreMissing() throws Exception {
-		Page<SeatResponse> seatResponsePage = new PageImpl<>(List.of(seatResponse()));
+		PagedResponse<SeatResponse> seatResponsePage = PagedResponse.from(new PageImpl<>(List.of(seatResponse())));
 		when(seatService.getAvailableSeats(anyLong(), any(Pageable.class)))
 				.thenReturn(seatResponsePage);
 
@@ -333,7 +334,7 @@ public class EventControllerTest {
 		       ).andExpect(status().isOk())
 		       .andExpect(jsonPath("$.content").isArray())
 		       .andExpect(jsonPath("$.content.length()").value(1))
-		       .andExpect(jsonPath("$.page.size").value(1))
+		       .andExpect(jsonPath("$.pageSize").value(1))
 		       .andExpect(jsonPath("$.content[0].id").value(seatId));
 	}
 

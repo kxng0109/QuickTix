@@ -1,11 +1,11 @@
 package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.HoldSeatsRequest;
+import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
 import io.github.kxng0109.quicktix.entity.Event;
 import io.github.kxng0109.quicktix.entity.Seat;
 import io.github.kxng0109.quicktix.entity.User;
-import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.repositories.EventRepository;
@@ -56,8 +56,12 @@ public class SeatService {
 	 * @throws EntityNotFoundException if the event with the given ID does not exist in the database.
 	 */
 	@Transactional(readOnly = true)
-	@Cacheable(value = "availableSeats", key = "#eventId + '-' + #pageable.pageNumber", sync = true)
-	public Page<SeatResponse> getAvailableSeats(Long eventId, Pageable pageable) {
+	@Cacheable(
+			value = "availableSeats",
+			key = "#eventId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize",
+			sync = true
+	)
+	public PagedResponse<SeatResponse> getAvailableSeats(Long eventId, Pageable pageable) {
 		Event event = eventRepository.findById(eventId)
 		                             .orElseThrow(
 				                             () -> new EntityNotFoundException("Event not found")
@@ -69,7 +73,8 @@ public class SeatService {
 				pageable
 		);
 
-		return pagedSeats.map(this::buildSeatResponse);
+		Page<SeatResponse> seatResponsePage = pagedSeats.map(this::buildSeatResponse);
+		return PagedResponse.from(seatResponsePage);
 	}
 
 	/**

@@ -1,6 +1,7 @@
 package io.github.kxng0109.quicktix.service;
 
 import io.github.kxng0109.quicktix.dto.request.CreateVenueRequest;
+import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.VenueResponse;
 import io.github.kxng0109.quicktix.entity.Venue;
 import io.github.kxng0109.quicktix.exception.ResourceInUseException;
@@ -68,10 +69,11 @@ public class VenueService {
 	 */
 	@Transactional(readOnly = true)
 	@Cacheable(value = "venues", key = "'all-' + #pageable.pageNumber", sync = true)
-	public Page<VenueResponse> getAllVenues(Pageable pageable) {
+	public PagedResponse<VenueResponse> getAllVenues(Pageable pageable) {
 		Page<Venue> venues = venueRepository.findAll(pageable);
 
-		return venues.map(this::buildVenueResponse);
+		Page<VenueResponse> venueResponsePage = venues.map(this::buildVenueResponse);
+		return PagedResponse.from(venueResponsePage);
 	}
 
 	/**
@@ -81,10 +83,11 @@ public class VenueService {
 	 */
 	@Transactional(readOnly = true)
 	@Cacheable(value = "venues", key = "#city", sync = true)
-	public Page<VenueResponse> getVenuesByCity(String city, Pageable pageable) {
+	public PagedResponse<VenueResponse> getVenuesByCity(String city, Pageable pageable) {
 		Page<Venue> venues = venueRepository.findByCity(city, pageable);
 
-		return venues.map(this::buildVenueResponse);
+		Page<VenueResponse> venueResponsePage = venues.map(this::buildVenueResponse);
+		return PagedResponse.from(venueResponsePage);
 	}
 
 	/**

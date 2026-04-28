@@ -11,13 +11,14 @@ import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializ
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * Global configuration for Spring Cache.
+ * Global configuration for Spring Cache using Redis.
  * <p>
- * Enables application-wide caching mechanisms. This configuration is intentionally
- * disabled when the "test" profile is active (via {@code @Profile("!test")}) to prevent
- * testing environments from attempting to connect to a live Redis instance.
+ * Configures default serialization and TTLs, while providing specific short-lived
+ * micro-caches for highly volatile data like available seat inventory.
  * </p>
  */
 @Configuration
@@ -32,15 +33,20 @@ public class RedisConfig {
 		                                                                                .enableSpringCacheNullValueSupport()
 		                                                                                .build();
 
-		RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-		                                                        .entryTtl(Duration.ofMinutes(60))
-		                                                        .disableCachingNullValues()
-		                                                        .serializeValuesWith(
-				                                                        RedisSerializationContext.SerializationPair.fromSerializer(serializer)
-		                                                        );
+		RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+		                                                               .entryTtl(Duration.ofMinutes(60))
+		                                                               .disableCachingNullValues()
+		                                                               .serializeValuesWith(
+				                                                               RedisSerializationContext.SerializationPair
+						                                                               .fromSerializer(serializer)
+		                                                               );
+
+		Map<String, RedisCacheConfiguration> specificCacheConfigs = new HashMap<>();
+		specificCacheConfigs.put("availableSeats", defaultConfig.entryTtl(Duration.ofSeconds(5)));
 
 		return RedisCacheManager.builder(connectionFactory)
-		                        .cacheDefaults(config)
+		                        .cacheDefaults(defaultConfig)
+		                        .withInitialCacheConfigurations(specificCacheConfigs)
 		                        .build();
 	}
 }

@@ -105,7 +105,7 @@ Content-Type: application/json
 
 {
   "eventId": {{event_id}},
-  "seats": [{{seat_id}}]
+  "seatIds": [{{seat_id}}]
 }
 
 > {%

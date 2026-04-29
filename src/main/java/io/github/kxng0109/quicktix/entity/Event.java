@@ -6,7 +6,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -41,16 +40,16 @@ public class Event {
     @Column(name = "event_end_date_time", nullable = false)
     private Instant eventEndDateTime;
 
-    @Column(name = "ticket_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal ticketPrice;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private EventStatus status = EventStatus.UPCOMING;
 
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "event", fetch = FetchType.LAZY)
     private List<Seat> seats;
+
+    @OneToMany(mappedBy = "event", fetch = FetchType.LAZY)
+    private List<Section> sections;
 
     @OneToMany(mappedBy = "event", fetch = FetchType.LAZY)
     private List<Booking> bookings;

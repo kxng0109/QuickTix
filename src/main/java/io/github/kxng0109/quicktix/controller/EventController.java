@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.controller;
 
 import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
 import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
+import io.github.kxng0109.quicktix.dto.request.UpdateEventRequest;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
 import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
@@ -181,7 +182,7 @@ public class EventController {
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<EventResponse> updateEventById(
 			@Min(value = 1, message = "Event ID must have a value of at least 1") @PathVariable long id,
-			@Valid @RequestBody CreateEventRequest request
+			@Valid @RequestBody UpdateEventRequest request
 	) {
 		return ResponseEntity.ok(eventService.updateEventById(id, request));
 	}

@@ -5,8 +5,8 @@ import jakarta.validation.constraints.*;
 import lombok.Builder;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Builder
 @Schema(description = "Request payload for creating or updating an event")
@@ -60,17 +60,6 @@ public record CreateEventRequest(
 		Instant eventEndDateTime,
 
 		@Schema(
-				description = "Price per ticket in the local currency",
-				example = "15000.00",
-				requiredMode = Schema.RequiredMode.REQUIRED,
-				minimum = "0.01"
-		)
-		@NotNull(message = "Ticket price must not be blank")
-		@DecimalMin(value = "0.01", message = "Ticket price must be greater than 0.01")
-		@Digits(integer = 6, fraction = 2, message = "Ticket price must be in the format '999999.99'")
-		BigDecimal ticketPrice,
-
-		@Schema(
 				description = "Total number of seats to generate for this event. Cannot be changed after creation.",
 				example = "5000",
 				requiredMode = Schema.RequiredMode.REQUIRED,
@@ -78,7 +67,11 @@ public record CreateEventRequest(
 		)
 		@NotNull(message = "Number of seats can't be blank")
 		@PositiveOrZero(message = "Number of seats must be 0 or greater.")
-		Long numberOfSeats
+		Long numberOfSeats,
+
+		@NotEmpty(message = "Sections can't be empty")
+		@Size(min = 1, message = "Sections must be at least 1")
+		List<SectionRequest> sections
 ) {
 	@AssertTrue(message = "Start date time must be before end date time")
 	@Schema(hidden = true)

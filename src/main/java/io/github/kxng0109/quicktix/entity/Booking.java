@@ -30,7 +30,7 @@ public class Booking {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    @OneToMany(mappedBy = "booking", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "booking")
     private List<Seat> seats;
 
     @Enumerated(EnumType.STRING)

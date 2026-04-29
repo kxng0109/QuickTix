@@ -334,7 +334,8 @@ public class SeatService {
 		return SeatResponse.builder()
 		                   .id(seat.getId())
 		                   .seatNumber(seat.getSeatNumber())
-		                   .rowName(seat.getRowName())
+		                   .rowName(seat.getRow().getName())
+				.sectionName(seat.getRow().getSection().getName())
 		                   .status(seat.getSeatStatus().getDisplayName())
 		                   .build();
 	}

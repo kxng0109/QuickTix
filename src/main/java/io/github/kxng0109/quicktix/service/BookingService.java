@@ -56,7 +56,7 @@ public class BookingService {
 	 * @param bookId      The unique internal identifier of the booking.
 	 * @param currentUser The currently authenticated user making the request.
 	 * @return A {@link BookingResponse} detailing the booking and its associated seats.
-	 * @throws EntityNotFoundException if the requested booking ID does not exist.
+	 * @throws EntityNotFoundException                                   if the requested booking ID does not exist.
 	 * @throws org.springframework.security.access.AccessDeniedException if the user lacks ownership or admin rights.
 	 */
 	@Transactional(readOnly = true)
@@ -81,7 +81,7 @@ public class BookingService {
 	 * @param bookingReference The unique public alphanumeric reference (e.g., "QT-A9K4P2").
 	 * @param currentUser      The currently authenticated user making the request.
 	 * @return A {@link BookingResponse} detailing the booking and its associated seats.
-	 * @throws EntityNotFoundException if no booking matches the provided reference string.
+	 * @throws EntityNotFoundException                                   if no booking matches the provided reference string.
 	 * @throws org.springframework.security.access.AccessDeniedException if the user lacks ownership or admin rights.
 	 */
 	@Transactional(readOnly = true)
@@ -108,7 +108,7 @@ public class BookingService {
 	 * @param pageable    Pagination metadata (page number, page size, sort parameters).
 	 * @param currentUser The currently authenticated user making the request.
 	 * @return A paginated {@link Page} of {@link BookingResponse} objects.
-	 * @throws EntityNotFoundException if the target user account does not exist.
+	 * @throws EntityNotFoundException                                   if the target user account does not exist.
 	 * @throws org.springframework.security.access.AccessDeniedException if the user lacks ownership or admin rights.
 	 */
 	@Transactional(readOnly = true)
@@ -154,8 +154,10 @@ public class BookingService {
 				request.eventId()
 		);
 
-		BigDecimal calculatedTotalAmount = event.getTicketPrice()
-		                                        .multiply(BigDecimal.valueOf(seats.size()));
+		BigDecimal calculatedTotalAmount = BigDecimal.ZERO;
+		for (Seat seat : seats) {
+			calculatedTotalAmount = calculatedTotalAmount.add(seat.getPrice());
+		}
 
 		Booking booking = Booking.builder()
 		                         .user(currentUser)
@@ -297,6 +299,7 @@ public class BookingService {
 	}
 
 	//When the booking expires or the event is cancelled
+
 	/**
 	 * INTERNAL USE ONLY.
 	 * Processes a batch cancellation of pending or abandoned bookings.
@@ -333,6 +336,7 @@ public class BookingService {
 	}
 
 	//Booking cancelled by user, or successfully refunded
+
 	/**
 	 * INTERNAL USE ONLY.
 	 * Processes the cancellation of a single booking, typically initiated by the user or triggered by a gateway refund.
@@ -365,8 +369,10 @@ public class BookingService {
 		List<SeatResponse> seatResponses = booking.getSeats().stream()
 		                                          .map(seat -> SeatResponse.builder()
 		                                                                   .id(seat.getId())
+		                                                                   .sectionName(
+				                                                                   seat.getRow().getSection().getName())
 		                                                                   .seatNumber(seat.getSeatNumber())
-		                                                                   .rowName(seat.getRowName())
+		                                                                   .rowName(seat.getRow().getName())
 		                                                                   .status(seat.getSeatStatus()
 		                                                                               .getDisplayName())
 		                                                                   .build())

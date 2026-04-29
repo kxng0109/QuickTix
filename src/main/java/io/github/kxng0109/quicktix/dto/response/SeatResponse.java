@@ -22,6 +22,8 @@ public record SeatResponse(
 				example = "Available",
 				allowableValues = {"Available", "Held", "Booked"}
 		)
-		String status
+		String status,
+
+		String sectionName
 ) implements Serializable {
 }

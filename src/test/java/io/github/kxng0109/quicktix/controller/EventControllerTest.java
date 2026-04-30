@@ -2,8 +2,7 @@ package io.github.kxng0109.quicktix.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
-import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
+import io.github.kxng0109.quicktix.dto.request.*;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
 import io.github.kxng0109.quicktix.dto.response.PagedResponse;
 import io.github.kxng0109.quicktix.dto.response.SeatResponse;
@@ -48,12 +47,9 @@ public class EventControllerTest {
 	private final Long venueId = 200L;
 	private final Long seatId = 300L;
 	private final CreateEventRequest badRequest = CreateEventRequest.builder().build();
-
+	private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 	@Autowired
 	private MockMvc mockMvc;
-
-	private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-
 	@MockitoBean
 	private EventService eventService;
 
@@ -66,32 +62,55 @@ public class EventControllerTest {
 	@MockitoBean
 	private CustomUserDetailsService userDetailsService;
 
-	private CreateEventRequest request;
+	private CreateEventRequest createRequest;
+	private UpdateEventRequest updateRequest;
 	private EventResponse response;
 	private User adminUser;
 
 	@BeforeEach
 	public void setup() {
-		request = CreateEventRequest.builder()
-		                            .name("event name")
-		                            .description("event description")
-		                            .venueId(venueId)
-		                            .eventStartDateTime(Instant.now().plus(2, ChronoUnit.HOURS))
-		                            .eventEndDateTime(Instant.now().plus(3, ChronoUnit.HOURS))
-		                            .ticketPrice(BigDecimal.valueOf(12345.68))
-		                            .numberOfSeats(40000L)
-		                            .build();
+		RowRequest rowRequest = RowRequest.builder()
+		                                  .name("A")
+		                                  .rowOrder(1)
+		                                  .numberOfSeats(5)
+		                                  .build();
+
+		SectionRequest sectionRequest = SectionRequest.builder()
+		                                              .name("VIP")
+		                                              .description("VIP section")
+		                                              .capacity(100)
+		                                              .basePrice(BigDecimal.valueOf(5000.00))
+		                                              .rows(List.of(rowRequest))
+		                                              .build();
+
+		createRequest = CreateEventRequest.builder()
+		                                  .name("event name")
+		                                  .description("event description")
+		                                  .venueId(venueId)
+		                                  .eventStartDateTime(Instant.now().plus(2, ChronoUnit.HOURS))
+		                                  .eventEndDateTime(Instant.now().plus(3, ChronoUnit.HOURS))
+		                                  .sections(List.of(sectionRequest))
+		                                  .numberOfSeats(40000L)
+		                                  .build();
+
+		updateRequest = UpdateEventRequest.builder()
+		                                  .name("Updated event")
+		                                  .description("Updated description")
+		                                  .eventStartDateTime(Instant.now().plus(1, ChronoUnit.HOURS))
+		                                  .eventEndDateTime(Instant.now().plus(3, ChronoUnit.HOURS))
+		                                  .build();
+
 
 		response = EventResponse.builder()
 		                        .id(eventId)
-		                        .name(request.name())
-		                        .description(request.description())
+		                        .name(createRequest.name())
+		                        .description(createRequest.description())
 		                        .venueName("venue name")
-		                        .ticketPrice(request.ticketPrice())
+		                        .ticketPrice(createRequest.sections().getFirst().basePrice())
 		                        .status(EventStatus.UPCOMING.getDisplayName())
 		                        .availableSeats(30000L)
-		                        .eventStartDateTime(request.eventStartDateTime())
-		                        .eventEndDateTime(request.eventEndDateTime())
+		                        .eventStartDateTime(createRequest.eventStartDateTime())
+		                        .eventEndDateTime(createRequest.eventEndDateTime())
 		                        .build();
 
 		adminUser = User.builder()
@@ -111,11 +130,11 @@ public class EventControllerTest {
 				       post("/api/v1/events")
 						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
-						       .content(objectMapper.writeValueAsString(request))
+						       .content(objectMapper.writeValueAsString(createRequest))
 		       ).andExpect(status().isCreated())
 		       .andExpect(jsonPath("$.id").value(eventId))
-		       .andExpect(jsonPath("$.name").value(request.name()))
-		       .andExpect(jsonPath("$.description").value(request.description()))
+		       .andExpect(jsonPath("$.name").value(createRequest.name()))
+		       .andExpect(jsonPath("$.description").value(createRequest.description()))
 		       .andExpect(jsonPath("$.venueName").value(response.venueName()));
 	}
 
@@ -149,7 +168,7 @@ public class EventControllerTest {
 				       post(uriTemplate)
 						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
-						       .content(objectMapper.writeValueAsString(request))
+						       .content(objectMapper.writeValueAsString(createRequest))
 		       ).andExpect(status().isNotFound())
 		       .andExpect(jsonPath("$.statusCode").value(404))
 		       .andExpect(jsonPath("$.path").value(uriTemplate));
@@ -166,8 +185,8 @@ public class EventControllerTest {
 						       .contentType(MediaType.APPLICATION_JSON)
 		       ).andExpect(status().isOk())
 		       .andExpect(jsonPath("$.id").value(eventId))
-		       .andExpect(jsonPath("$.name").value(request.name()))
-		       .andExpect(jsonPath("$.description").value(request.description()))
+		       .andExpect(jsonPath("$.name").value(createRequest.name()))
+		       .andExpect(jsonPath("$.description").value(createRequest.description()))
 		       .andExpect(jsonPath("$.venueName").value(response.venueName()));
 	}
 
@@ -494,60 +513,62 @@ public class EventControllerTest {
 
 	@Test
 	public void updateEventById_should_return200OkAndEventResponse_whenRequestIsValid() throws Exception {
-		when(eventService.updateEventById(anyLong(), any(CreateEventRequest.class)))
+		when(eventService.updateEventById(anyLong(), any(UpdateEventRequest.class)))
 				.thenReturn(response);
 
 		mockMvc.perform(
-				       put("/api/v1/events/{id}", eventId)
+				       patch("/api/v1/events/{id}", eventId)
 						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
-						       .content(objectMapper.writeValueAsString(request))
+						       .content(objectMapper.writeValueAsString(updateRequest))
 		       ).andExpect(status().isOk())
 		       .andExpect(jsonPath("$.id").value(eventId))
 		       .andExpect(jsonPath("$.status").value(response.status()))
-		       .andExpect(jsonPath("$.name").value(request.name()));
+		       .andExpect(jsonPath("$.name").value(createRequest.name()));
 	}
 
 	@Test
 	public void updateEventById_should_return400BadRequest_whenRequestIsInvalid() throws Exception {
+		UpdateEventRequest badUpdateRequest = UpdateEventRequest.builder()
+		                                                        .eventStartDateTime(
+				                                                        Instant.now().minus(1, ChronoUnit.HOURS))
+		                                                        .build();
+
 		mockMvc.perform(
-				       put("/api/v1/events/{id}", eventId)
+				       patch("/api/v1/events/{id}", eventId)
 						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
-						       .content(objectMapper.writeValueAsString(badRequest))
+						       .content(objectMapper.writeValueAsString(badUpdateRequest))
 		       ).andExpect(status().isBadRequest())
-		       .andExpect(jsonPath("$.name").value("Event name can't be blank."))
-		       .andExpect(jsonPath("$.description").value("Event description can't be blank."))
-		       .andExpect(jsonPath("$.venueId").value("Event venue ID can't be blank."))
-		       .andExpect(jsonPath("$.eventStartDateTime").value("Event start date time must not be blank"));
+		       .andExpect(jsonPath("$.eventStartDateTime").value("must be a date in the present or in the future"));
 
-		verify(eventService, never()).updateEventById(anyLong(), any(CreateEventRequest.class));
+		verify(eventService, never()).updateEventById(anyLong(), any(UpdateEventRequest.class));
 	}
 
 	@Test
 	public void updateEventById_should_return400BadRequest_whenIdIsInvalid() throws Exception {
 		mockMvc.perform(
-				       put("/api/v1/events/{id}", -1)
+				       patch("/api/v1/events/{id}", -1)
 						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
-						       .content(objectMapper.writeValueAsString(request))
+						       .content(objectMapper.writeValueAsString(updateRequest))
 		       ).andExpect(status().isBadRequest())
 		       .andExpect(jsonPath("$.statusCode").value(400))
 		       .andExpect(jsonPath("$.path").value("/api/v1/events/-1"));
 
-		verify(eventService, never()).updateEventById(anyLong(), any(CreateEventRequest.class));
+		verify(eventService, never()).updateEventById(anyLong(), any(UpdateEventRequest.class));
 	}
 
 	@Test
 	public void updateEventById_should_return404NotFound_whenEventIsNotFound() throws Exception {
 		doThrow(EntityNotFoundException.class)
-				.when(eventService).updateEventById(anyLong(), any(CreateEventRequest.class));
+				.when(eventService).updateEventById(anyLong(), any(UpdateEventRequest.class));
 
 		mockMvc.perform(
-				       put("/api/v1/events/{id}", eventId)
+				       patch("/api/v1/events/{id}", eventId)
 						       .with(user(adminUser))
 						       .contentType(MediaType.APPLICATION_JSON)
-						       .content(objectMapper.writeValueAsString(request))
+						       .content(objectMapper.writeValueAsString(updateRequest))
 		       ).andExpect(status().isNotFound())
 		       .andExpect(jsonPath("$.statusCode").value(404))
 		       .andExpect(jsonPath("$.path").value("/api/v1/events/" + eventId));
@@ -559,6 +580,7 @@ public class EventControllerTest {
 		                   .seatNumber(23)
 		                   .rowName("E")
 		                   .status(SeatStatus.AVAILABLE.getDisplayName())
+		                   .sectionName("1")
 		                   .build();
 	}
 }

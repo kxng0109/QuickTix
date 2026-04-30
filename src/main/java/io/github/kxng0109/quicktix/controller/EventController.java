@@ -165,20 +165,40 @@ public class EventController {
 	}
 
 	@Operation(
-			summary = "Update event",
+			summary = "Partially update event metadata",
 			description = """
-					Updates an existing event's details. Note:
-					- The number of seats cannot be changed after creation
-					- Changing the venue is allowed
-					- Event date/time can be updated
+					Applies partial modifications to an existing event's basic details.
+					
+					**Allowed Modifications:**
+					- Event Name
+					- Description
+					- Start Date/Time
+					- End Date/Time
+					
+					**Strict Restrictions:**
+					- Venue changes are explicitly forbidden. (If a venue changes, the event must be cancelled and recreated to regenerate the spatial seating chart).
+					- Inventory/Capacity cannot be modified here.
+					- Pricing cannot be modified here.
 					"""
 	)
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Event updated successfully"),
-			@ApiResponse(responseCode = "400", description = "Invalid request data or attempting to change seat count", content = @Content),
-			@ApiResponse(responseCode = "404", description = "Event or venue not found", content = @Content)
+			@ApiResponse(
+					responseCode = "200",
+					description = "Event metadata updated successfully",
+					content = @Content(schema = @Schema(implementation = EventResponse.class))
+			),
+			@ApiResponse(
+					responseCode = "400",
+					description = "Validation failed (e.g., end date is before start date, or dates are in the past)",
+					content = @Content
+			),
+			@ApiResponse(
+					responseCode = "404",
+					description = "Event not found",
+					content = @Content
+			)
 	})
-	@PutMapping("/{id}")
+	@PatchMapping("/{id}")
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<EventResponse> updateEventById(
 			@Min(value = 1, message = "Event ID must have a value of at least 1") @PathVariable long id,

@@ -1,7 +1,9 @@
 package io.github.kxng0109.quicktix.dto.request;
 
 import jakarta.validation.constraints.*;
+import lombok.Builder;
 
+@Builder
 public record RowRequest(
 		@NotEmpty(message = "Row name required")
 		String name,

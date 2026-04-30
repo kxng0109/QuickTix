@@ -1,21 +1,15 @@
 package io.github.kxng0109.quicktix.service;
 
-import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
-import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
+import io.github.kxng0109.quicktix.dto.request.*;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
-import io.github.kxng0109.quicktix.entity.Booking;
-import io.github.kxng0109.quicktix.entity.Event;
-import io.github.kxng0109.quicktix.entity.Seat;
-import io.github.kxng0109.quicktix.entity.Venue;
+import io.github.kxng0109.quicktix.entity.*;
 import io.github.kxng0109.quicktix.enums.BookingStatus;
 import io.github.kxng0109.quicktix.enums.EventStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
 import io.github.kxng0109.quicktix.event.EventCancelledEvent;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.ResourceInUseException;
-import io.github.kxng0109.quicktix.repositories.EventRepository;
-import io.github.kxng0109.quicktix.repositories.SeatRepository;
-import io.github.kxng0109.quicktix.repositories.VenueRepository;
+import io.github.kxng0109.quicktix.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,42 +54,74 @@ public class EventServiceTest {
 	private SeatRepository seatRepository;
 
 	@Mock
+	private SectionRepository sectionRepository;
+
+	@Mock
+	private RowRepository rowRepository;
+
+	@Mock
 	private ApplicationEventPublisher applicationEventPublisher;
 
 	@InjectMocks
 	private EventService eventService;
 
-	private CreateEventRequest request;
+	private CreateEventRequest createRequest;
+	private UpdateEventRequest updateRequest;
 	private Event event;
 	private Venue venue;
 
 	@BeforeEach
 	public void setUp() {
-		request = CreateEventRequest.builder()
-		                            .name("Lorem Ipsum event")
-		                            .description(
-				                            "An event that has lorem ipsum text every where and everyone talks in lorem ipsum")
-		                            .venueId(venueId)
-		                            .eventStartDateTime(Instant.now().plus(1, ChronoUnit.DAYS))
-		                            .eventEndDateTime(Instant.now().plus(1, ChronoUnit.DAYS).plus(2, ChronoUnit.HOURS))
-		                            .ticketPrice(BigDecimal.valueOf(13455.99))
-		                            .numberOfSeats(numberOfSeats)
-		                            .build();
+		RowRequest rowRequest = RowRequest.builder()
+		                                  .name("A")
+		                                  .rowOrder(1)
+		                                  .numberOfSeats(5)
+		                                  .build();
+
+		SectionRequest sectionRequest = SectionRequest.builder()
+		                                              .name("VIP")
+		                                              .description("VIP section")
+		                                              .capacity(100)
+		                                              .basePrice(BigDecimal.valueOf(5000.00))
+		                                              .rows(List.of(rowRequest))
+		                                              .build();
+		createRequest = CreateEventRequest.builder()
+		                                  .name("Lorem Ipsum event")
+		                                  .description(
+				                                  "An event that has lorem ipsum text every where and everyone talks in lorem ipsum")
+		                                  .venueId(venueId)
+		                                  .eventStartDateTime(Instant.now().plus(1, ChronoUnit.DAYS))
+		                                  .eventEndDateTime(
+				                                  Instant.now().plus(1, ChronoUnit.DAYS).plus(2, ChronoUnit.HOURS))
+		                                  .sections(List.of(sectionRequest))
+		                                  .numberOfSeats(numberOfSeats)
+		                                  .build();
+
+		updateRequest = UpdateEventRequest.builder()
+		                                  .name("Updated event")
+		                                  .description("Updated description")
+		                                  .eventStartDateTime(Instant.now())
+		                                  .eventEndDateTime(Instant.now().plus(3, ChronoUnit.HOURS))
+		                                  .build();
 
 		venue = Venue.builder()
 		             .id(venueId)
 		             .build();
 
+		Section section = Section.builder()
+		                         .id(100L)
+		                         .build();
+
 		event = Event.builder()
 		             .id(eventId)
-		             .name(request.name())
-		             .description(request.description())
+		             .name(createRequest.name())
+		             .description(createRequest.description())
 		             .venue(venue)
 		             .status(EventStatus.UPCOMING)
 		             .seats(seats)
-		             .eventStartDateTime(request.eventStartDateTime())
-		             .eventEndDateTime(request.eventEndDateTime())
-		             .ticketPrice(request.ticketPrice())
+		             .eventStartDateTime(createRequest.eventStartDateTime())
+		             .eventEndDateTime(createRequest.eventEndDateTime())
+		             .sections(List.of(section))
 		             .build();
 
 		for (int i = 1; i <= numberOfSeats; i++) {
@@ -113,9 +139,13 @@ public class EventServiceTest {
 	@Test
 	public void createEvent_should_returnEventResponse_whenRequestIsValid() {
 		when(venueRepository.findById(venueId)).thenReturn(Optional.of(venue));
-		when(eventRepository.save(any(Event.class))).thenAnswer(i -> i.getArgument(0));
+		when(eventRepository.save(any(Event.class))).thenReturn(event);
+		when(rowRepository.save(any(Row.class))).thenAnswer(i -> i.getArgument(0));
+		when(sectionRepository.save(any(Section.class))).thenAnswer(i -> i.getArgument(0));
+		when(seatRepository.countByEventIdAndSeatStatus(anyLong(), any(SeatStatus.class)))
+				.thenReturn(numberOfSeats);
 
-		EventResponse response = eventService.createEvent(request);
+		EventResponse response = eventService.createEvent(createRequest);
 
 		assertNotNull(response);
 		verify(venueRepository).findById(venueId);
@@ -126,7 +156,7 @@ public class EventServiceTest {
 	public void createEvent_should_throwEntityNotFoundException_whenVenueDoesNotExist() {
 		when(venueRepository.findById(venueId)).thenReturn(Optional.empty());
 
-		assertThrows(EntityNotFoundException.class, () -> eventService.createEvent(request));
+		assertThrows(EntityNotFoundException.class, () -> eventService.createEvent(createRequest));
 		verify(venueRepository).findById(venueId);
 		verify(eventRepository, never()).save(any(Event.class));
 	}
@@ -224,7 +254,7 @@ public class EventServiceTest {
 		when(seatRepository.countByEventIdAndSeatStatus(anyLong(), any(SeatStatus.class)))
 				.thenReturn(numberOfSeats);
 
-		EventResponse response = eventService.updateEventById(eventId, request);
+		EventResponse response = eventService.updateEventById(eventId, updateRequest);
 
 		assertNotNull(response);
 		verify(eventRepository).findById(anyLong());
@@ -233,21 +263,10 @@ public class EventServiceTest {
 	}
 
 	@Test
-	public void updateEventById_should_throwIllegalArgumentException_whenSizeChangeIsInRequest() {
-		event.setSeats(List.of());
-		when(eventRepository.findById(anyLong())).thenReturn(Optional.of(event));
-
-		assertThrows(IllegalArgumentException.class, () -> eventService.updateEventById(eventId, request));
-
-		verify(eventRepository).findById(anyLong());
-		verify(eventRepository, never()).save(any(Event.class));
-	}
-
-	@Test
 	public void updateEventById_should_throwEntityNotFoundException_whenEventDoesNotExist() {
 		when(eventRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-		assertThrows(EntityNotFoundException.class, () -> eventService.updateEventById(eventId, request));
+		assertThrows(EntityNotFoundException.class, () -> eventService.updateEventById(eventId, updateRequest));
 		verify(eventRepository).findById(anyLong());
 	}
 

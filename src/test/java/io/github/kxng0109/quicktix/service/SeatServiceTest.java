@@ -39,7 +39,6 @@ import static org.mockito.Mockito.*;
 public class SeatServiceTest {
 
 	private final long eventId = 100L;
-	private final long userId = 200L;
 	private final List<Long> seatIds = List.of(300L, 301L, 302L);
 	private final int availableSeats = seatIds.size();
 	private final Pageable pageable = PageRequest.of(0, availableSeats);
@@ -63,6 +62,20 @@ public class SeatServiceTest {
 
 	@BeforeEach
 	void setUp() {
+		Section section = Section.builder()
+		                         .id(100L)
+		                         .name("VIP")
+		                         .description("VIP section")
+		                         .capacity(availableSeats)
+		                         .price(BigDecimal.valueOf(5000.00))
+		                         .build();
+
+		Row row = Row.builder().id(100L)
+		             .name("A")
+		             .rowOrder(0)
+		             .section(section)
+		             .build();
+
 		event = Event.builder()
 		             .id(eventId)
 		             .name("An event")
@@ -72,22 +85,26 @@ public class SeatServiceTest {
 		             .status(EventStatus.UPCOMING)
 		             .eventStartDateTime(Instant.now().plus(1, ChronoUnit.HOURS))
 		             .eventEndDateTime(Instant.now().plus(2, ChronoUnit.HOURS))
-		             .ticketPrice(BigDecimal.valueOf(1395.65))
+		             .sections(List.of(section))
 		             .build();
+
+		section.setEvent(event);
+		section.setRows(List.of(row));
 
 		for (int i = 0; i < availableSeats; i++) {
 			Seat seat = Seat.builder()
 			                .id(seatIds.get(i))
 			                .seatStatus(SeatStatus.AVAILABLE)
-					.booking(Booking.builder().status(BookingStatus.CONFIRMED).build())
-					.seatNumber(i)
-					.rowName("A")
+			                .booking(Booking.builder().status(BookingStatus.CONFIRMED).build())
+			                .seatNumber(i)
+			                .row(row)
 			                .event(event)
 			                .build();
 
 			seats.add(seat);
 		}
 
+		long userId = 200L;
 		user = User.builder()
 		           .id(userId)
 		           .firstName("Adam")
@@ -175,12 +192,13 @@ public class SeatServiceTest {
 	}
 
 	@Test
-	public void holdSeats_should_throwInvalidOperationException_whenLockIsNotAcquired(){
+	public void holdSeats_should_throwInvalidOperationException_whenLockIsNotAcquired() {
 		when(seatLockService.acquireLock(anyLong(), anyString()))
 				.thenReturn(false);
 
 		assertThrows(InvalidOperationException.class,
-		             () -> seatService.holdSeats(holdSeatsRequest, user));
+		             () -> seatService.holdSeats(holdSeatsRequest, user)
+		);
 
 		verify(seatLockService).acquireLock(anyLong(), anyString());
 		verify(userRepository, never()).getReferenceById(anyLong());

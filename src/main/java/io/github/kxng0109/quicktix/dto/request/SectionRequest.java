@@ -1,10 +1,12 @@
 package io.github.kxng0109.quicktix.dto.request;
 
 import jakarta.validation.constraints.*;
+import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.util.List;
 
+@Builder
 public record SectionRequest(
 		@NotEmpty(message = "Section name can't be empty")
 		String name,

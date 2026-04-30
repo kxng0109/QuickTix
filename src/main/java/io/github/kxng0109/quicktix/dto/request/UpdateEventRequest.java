@@ -2,6 +2,7 @@ package io.github.kxng0109.quicktix.dto.request;
 
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.FutureOrPresent;
+import lombok.Builder;
 
 import java.time.Instant;
 
@@ -17,6 +18,7 @@ import java.time.Instant;
  * @param eventStartDateTime  the new start date and time of the event (must be in the future or present)
  * @param eventEndDateTime    the new end date and time of the event (must be strictly in the future)
  */
+@Builder
 public record UpdateEventRequest(
 		String name,
 		String description,

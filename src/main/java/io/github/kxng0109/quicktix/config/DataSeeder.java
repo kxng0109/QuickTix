@@ -1,16 +1,10 @@
 package io.github.kxng0109.quicktix.config;
 
-import io.github.kxng0109.quicktix.entity.Event;
-import io.github.kxng0109.quicktix.entity.Seat;
-import io.github.kxng0109.quicktix.entity.User;
-import io.github.kxng0109.quicktix.entity.Venue;
+import io.github.kxng0109.quicktix.entity.*;
 import io.github.kxng0109.quicktix.enums.EventStatus;
 import io.github.kxng0109.quicktix.enums.Role;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
-import io.github.kxng0109.quicktix.repositories.EventRepository;
-import io.github.kxng0109.quicktix.repositories.SeatRepository;
-import io.github.kxng0109.quicktix.repositories.UserRepository;
-import io.github.kxng0109.quicktix.repositories.VenueRepository;
+import io.github.kxng0109.quicktix.repositories.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -34,11 +28,13 @@ public class DataSeeder implements CommandLineRunner {
 	private final PasswordEncoder passwordEncoder;
 	private final VenueRepository venueRepository;
 	private final EventRepository eventRepository;
+	private final SectionRepository sectionRepository; // ADDED
+	private final RowRepository rowRepository;         // ADDED
 	private final SeatRepository seatRepository;
 
 	@Override
 	public void run(String... args) {
-// Automatically create an admin user on startup if one doesn't exist
+		// Automatically create an admin user on startup if one doesn't exist
 		if (userRepository.findByEmail("admin@quicktix.com").isEmpty()) {
 			User admin = User.builder()
 			                 .firstName("System")
@@ -52,9 +48,9 @@ public class DataSeeder implements CommandLineRunner {
 			log.info("System Admin account seeded successfully.");
 		}
 
-		// 2. Seed Venue, Event, and Seats
+		// 2. Seed Venue, Event, Sections, Rows, and Seats
 		if (venueRepository.count() == 0) {
-			// Create a Venue
+			// Level 0: Create a Venue
 			Venue venue = Venue.builder()
 			                   .name("Eko Convention Center")
 			                   .address("Adetokunbo Ademola Street")
@@ -63,31 +59,64 @@ public class DataSeeder implements CommandLineRunner {
 			                   .build();
 			venue = venueRepository.save(venue);
 
-			// Create an Event
+			// Level 1: Create an Event (Notice: NO ticketPrice here anymore)
 			Event event = Event.builder()
 			                   .name("Lagos Tech Fest 2026")
 			                   .description("The biggest technology conference and exhibition in West Africa.")
 			                   .venue(venue)
 			                   .eventStartDateTime(Instant.now().plus(14, ChronoUnit.DAYS))
 			                   .eventEndDateTime(Instant.now().plus(14, ChronoUnit.DAYS).plus(8, ChronoUnit.HOURS))
-			                   .ticketPrice(BigDecimal.valueOf(15000))
 			                   .status(EventStatus.UPCOMING)
 			                   .build();
 			event = eventRepository.save(event);
 
-			// Generate 50 Available Seats for this Event
+			// Level 2: Create Sections (Prices belong here now)
+			Section vipSection = Section.builder()
+			                            .name("VIP")
+			                            .description("Premium Front Seating")
+			                            .capacity(20)
+			                            .price(BigDecimal.valueOf(25000))
+			                            .event(event)
+			                            .build();
+
+			Section generalSection = Section.builder()
+			                                .name("General Admission")
+			                                .description("Standard Seating")
+			                                .capacity(30)
+			                                .price(BigDecimal.valueOf(10000))
+			                                .event(event)
+			                                .build();
+
+			List<Section> savedSections = sectionRepository.saveAll(List.of(vipSection, generalSection));
+
+			// Level 3: Create Rows
+			Row vipRowA = Row.builder().name("A").rowOrder(1).section(savedSections.get(0)).build();
+			Row vipRowB = Row.builder().name("B").rowOrder(2).section(savedSections.get(0)).build();
+
+			Row genRowC = Row.builder().name("C").rowOrder(3).section(savedSections.get(1)).build();
+			Row genRowD = Row.builder().name("D").rowOrder(4).section(savedSections.get(1)).build();
+			Row genRowE = Row.builder().name("E").rowOrder(5).section(savedSections.get(1)).build();
+
+			List<Row> savedRows = rowRepository.saveAll(List.of(vipRowA, vipRowB, genRowC, genRowD, genRowE));
+
+			// Level 4: Generate 50 Seats (10 per row)
 			List<Seat> seats = new ArrayList<>();
-			for (int i = 1; i <= 10; i++) {
-				seats.add(Seat.builder()
-				              .seatNumber(i)
-				              .rowName("A")
-				              .seatStatus(SeatStatus.AVAILABLE)
-				              .event(event)
-				              .build());
+			for (Row row : savedRows) {
+				for (int i = 1; i <= 10; i++) {
+					seats.add(Seat.builder()
+					              .seatNumber(i)
+					              .seatStatus(SeatStatus.AVAILABLE)
+					              .event(event)
+					              .row(row)
+					              .price(row.getSection().getPrice())
+					              .build());
+				}
 			}
+
+			// Batch insert all 50 seats at once
 			seatRepository.saveAll(seats);
 
-			log.info("Venue (Eko Convention Center), Event (Lagos Tech Fest 2026), and 50 Seats seeded successfully.");
+			log.info("Venue, Event, Sections, Rows, and 50 spatial Seats seeded successfully.");
 		}
 	}
 }

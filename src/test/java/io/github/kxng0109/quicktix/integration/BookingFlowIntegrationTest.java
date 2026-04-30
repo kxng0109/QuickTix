@@ -71,6 +71,20 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 
 		Long venueId = objectMapper.readTree(venueResult.getResponse().getContentAsString()).get("id").asLong();
 
+		RowRequest rowRequest = RowRequest.builder()
+		                                  .name("A")
+		                                  .rowOrder(1)
+		                                  .numberOfSeats(5)
+		                                  .build();
+
+		SectionRequest sectionRequest = SectionRequest.builder()
+		                                              .name("VIP")
+		                                              .description("VIP section")
+		                                              .capacity(100)
+		                                              .basePrice(BigDecimal.valueOf(5000.00))
+		                                              .rows(List.of(rowRequest))
+		                                              .build();
+
 		CreateEventRequest eventRequest = CreateEventRequest.builder()
 		                                                    .name("Test Concert")
 		                                                    .description("A test concert")
@@ -78,7 +92,7 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		                                                    .eventStartDateTime(Instant.now().plus(7, ChronoUnit.DAYS))
 		                                                    .eventEndDateTime(Instant.now().plus(7, ChronoUnit.DAYS)
 		                                                                             .plus(3, ChronoUnit.HOURS))
-		                                                    .ticketPrice(BigDecimal.valueOf(5000))
+		                                                    .sections(List.of(sectionRequest))
 		                                                    .numberOfSeats(10L)
 		                                                    .build();
 
@@ -87,13 +101,13 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 				                                        .contentType(MediaType.APPLICATION_JSON)
 				                                        .content(objectMapper.writeValueAsString(eventRequest)))
 		                               .andExpect(status().isCreated())
-		                               .andExpect(jsonPath("$.availableSeats").value(10))
+		                               .andExpect(jsonPath("$.availableSeats").value(5))
 		                               .andReturn();
 
 		Long eventId = objectMapper.readTree(eventResult.getResponse().getContentAsString()).get("id").asLong();
 
 		List<Seat> allSeats = seatRepository.findAll();
-		assertThat(allSeats).hasSize(10);
+		assertThat(allSeats).hasSize(5);
 		assertThat(allSeats).allMatch(s -> s.getSeatStatus() == SeatStatus.AVAILABLE);
 
 		CreateUserRequest registerRequest = CreateUserRequest.builder()
@@ -165,7 +179,7 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		long availableCount = seatRepository.findAll().stream()
 		                                    .filter(s -> s.getSeatStatus() == SeatStatus.AVAILABLE)
 		                                    .count();
-		assertThat(availableCount).isEqualTo(7);
+		assertThat(availableCount).isEqualTo(2);
 	}
 
 	@Test
@@ -186,28 +200,38 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		                               .andReturn();
 		Long venueId = objectMapper.readTree(venueResult.getResponse().getContentAsString()).get("id").asLong();
 
+
+		RowRequest rowRequest = RowRequest.builder()
+		                                  .name("A")
+		                                  .rowOrder(1)
+		                                  .numberOfSeats(5)
+		                                  .build();
+
+		SectionRequest sectionRequest = SectionRequest.builder()
+		                                              .name("VIP")
+		                                              .description("VIP section")
+		                                              .capacity(100)
+		                                              .basePrice(BigDecimal.valueOf(5000.00))
+		                                              .rows(List.of(rowRequest))
+		                                              .build();
+
+		CreateEventRequest createEventRequest = CreateEventRequest.builder()
+		                                                          .name("Lock Test Event")
+		                                                          .description("Testing locks")
+		                                                          .venueId(venueId)
+		                                                          .eventStartDateTime(Instant.now()
+		                                                                                     .plus(5, ChronoUnit.DAYS))
+		                                                          .eventEndDateTime(Instant.now()
+		                                                                                   .plus(5, ChronoUnit.DAYS)
+		                                                                                   .plus(2, ChronoUnit.HOURS))
+		                                                          .sections(List.of(sectionRequest))
+		                                                          .numberOfSeats(5L)
+		                                                          .build();
+
 		MvcResult eventResult = mockMvc.perform(post("/api/v1/events")
 				                                        .header("Authorization", "Bearer " + adminToken)
 				                                        .contentType(MediaType.APPLICATION_JSON)
-				                                        .content(objectMapper.writeValueAsString(
-						                                        CreateEventRequest.builder()
-						                                                          .name("Lock Test Event")
-						                                                          .description("Testing locks")
-						                                                          .venueId(venueId)
-						                                                          .eventStartDateTime(Instant.now()
-						                                                                                     .plus(5,
-						                                                                                           ChronoUnit.DAYS
-						                                                                                     ))
-						                                                          .eventEndDateTime(Instant.now()
-						                                                                                   .plus(5,
-						                                                                                         ChronoUnit.DAYS
-						                                                                                   )
-						                                                                                   .plus(2,
-						                                                                                         ChronoUnit.HOURS
-						                                                                                   ))
-						                                                          .ticketPrice(BigDecimal.valueOf(1000))
-						                                                          .numberOfSeats(5L)
-						                                                          .build())))
+				                                        .content(objectMapper.writeValueAsString(createEventRequest)))
 		                               .andExpect(status().isCreated())
 		                               .andReturn();
 		Long eventId = objectMapper.readTree(eventResult.getResponse().getContentAsString()).get("id").asLong();
@@ -291,28 +315,38 @@ public class BookingFlowIntegrationTest extends BaseIntegrationTest {
 		                               .andReturn();
 		Long venueId = objectMapper.readTree(venueResult.getResponse().getContentAsString()).get("id").asLong();
 
+
+		RowRequest rowRequest = RowRequest.builder()
+		                                  .name("A")
+		                                  .rowOrder(1)
+		                                  .numberOfSeats(5)
+		                                  .build();
+
+		SectionRequest sectionRequest = SectionRequest.builder()
+		                                              .name("VIP")
+		                                              .description("VIP section")
+		                                              .capacity(100)
+		                                              .basePrice(BigDecimal.valueOf(5000.00))
+		                                              .rows(List.of(rowRequest))
+		                                              .build();
+
+		CreateEventRequest createEventRequest = CreateEventRequest.builder()
+		                                                          .name("Cancel Test Event")
+		                                                          .description("Desc")
+		                                                          .venueId(venueId)
+		                                                          .eventStartDateTime(
+				                                                          Instant.now().plus(3, ChronoUnit.DAYS))
+		                                                          .eventEndDateTime(Instant.now()
+		                                                                                   .plus(3, ChronoUnit.DAYS)
+		                                                                                   .plus(1, ChronoUnit.HOURS))
+		                                                          .sections(List.of(sectionRequest))
+		                                                          .numberOfSeats(5L)
+		                                                          .build();
+
 		MvcResult eventResult = mockMvc.perform(post("/api/v1/events")
 				                                        .header("Authorization", "Bearer " + adminToken)
 				                                        .contentType(MediaType.APPLICATION_JSON)
-				                                        .content(objectMapper.writeValueAsString(
-						                                        CreateEventRequest.builder()
-						                                                          .name("Cancel Test Event")
-						                                                          .description("Desc")
-						                                                          .venueId(venueId)
-						                                                          .eventStartDateTime(Instant.now()
-						                                                                                     .plus(3,
-						                                                                                           ChronoUnit.DAYS
-						                                                                                     ))
-						                                                          .eventEndDateTime(Instant.now()
-						                                                                                   .plus(3,
-						                                                                                         ChronoUnit.DAYS
-						                                                                                   )
-						                                                                                   .plus(1,
-						                                                                                         ChronoUnit.HOURS
-						                                                                                   ))
-						                                                          .ticketPrice(BigDecimal.valueOf(2000))
-						                                                          .numberOfSeats(5L)
-						                                                          .build())))
+				                                        .content(objectMapper.writeValueAsString(createEventRequest)))
 		                               .andExpect(status().isCreated())
 		                               .andReturn();
 		Long eventId = objectMapper.readTree(eventResult.getResponse().getContentAsString()).get("id").asLong();

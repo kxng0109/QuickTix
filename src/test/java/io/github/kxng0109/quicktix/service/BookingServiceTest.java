@@ -82,6 +82,20 @@ public class BookingServiceTest {
 		           .role(Role.USER)
 		           .build();
 
+		Section section = Section.builder()
+		                         .id(100L)
+		                         .name("VIP")
+		                         .description("VIP section")
+		                         .capacity(20)
+		                         .price(BigDecimal.valueOf(5000.00))
+		                         .build();
+
+		Row row = Row.builder().id(100L)
+		             .name("A")
+		             .rowOrder(0)
+		             .section(section)
+		             .build();
+
 		Long eventId = 300L;
 		event = Event.builder()
 		             .id(eventId)
@@ -90,18 +104,23 @@ public class BookingServiceTest {
 		             .venue(new Venue())
 		             .eventStartDateTime(Instant.now().plus(2, ChronoUnit.HOURS))
 		             .eventEndDateTime(Instant.now().plus(4, ChronoUnit.HOURS))
-		             .ticketPrice(totalAmount)
+		             .sections(List.of(Section.builder().build()))
+		             .sections(List.of(section))
 		             .status(EventStatus.UPCOMING)
 		             .seats(List.of())
 		             .build();
+
+		section.setEvent(event);
+		section.setRows(List.of(row));
 
 		Long seat1Id = 400L;
 		seat1 = Seat.builder()
 		            .id(seat1Id)
 		            .event(event)
 		            .seatNumber(16)
-		            .rowName("D")
+		            .row(row)
 		            .seatStatus(SeatStatus.HELD)
+		            .price(BigDecimal.valueOf(5000.00))
 		            .heldAt(Instant.now().minus(5, ChronoUnit.MINUTES))
 		            .heldByUser(user)
 		            .build();
@@ -111,11 +130,14 @@ public class BookingServiceTest {
 		            .id(seat2Id)
 		            .event(event)
 		            .seatNumber(25)
-		            .rowName("S")
+		            .row(row)
 		            .seatStatus(SeatStatus.HELD)
+		            .price(BigDecimal.valueOf(10000.00))
 		            .heldAt(Instant.now().minus(5, ChronoUnit.MINUTES))
 		            .heldByUser(user)
 		            .build();
+
+		row.setSeats(List.of(seat1, seat2));
 
 		booking = Booking.builder()
 		                 .id(bookingId)
@@ -613,8 +635,9 @@ public class BookingServiceTest {
 		return SeatResponse.builder()
 		                   .id(seat.getId())
 		                   .seatNumber(seat.getSeatNumber())
-		                   .rowName(seat.getRowName())
+		                   .rowName(seat.getRow().getName())
 		                   .status(seat.getSeatStatus().getDisplayName())
+		                   .sectionName(seat.getRow().getSection().getName())
 		                   .build();
 	}
 }

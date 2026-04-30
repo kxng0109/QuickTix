@@ -1,20 +1,15 @@
 package io.github.kxng0109.quicktix.service;
 
-import io.github.kxng0109.quicktix.dto.request.CreateEventRequest;
-import io.github.kxng0109.quicktix.dto.request.EventDateSearchRequest;
+import io.github.kxng0109.quicktix.dto.request.*;
 import io.github.kxng0109.quicktix.dto.request.projection.EventSeatCount;
 import io.github.kxng0109.quicktix.dto.response.EventResponse;
-import io.github.kxng0109.quicktix.entity.Event;
-import io.github.kxng0109.quicktix.entity.Seat;
-import io.github.kxng0109.quicktix.entity.Venue;
+import io.github.kxng0109.quicktix.entity.*;
 import io.github.kxng0109.quicktix.enums.EventStatus;
 import io.github.kxng0109.quicktix.enums.SeatStatus;
 import io.github.kxng0109.quicktix.event.EventCancelledEvent;
 import io.github.kxng0109.quicktix.exception.InvalidOperationException;
 import io.github.kxng0109.quicktix.exception.ResourceInUseException;
-import io.github.kxng0109.quicktix.repositories.EventRepository;
-import io.github.kxng0109.quicktix.repositories.SeatRepository;
-import io.github.kxng0109.quicktix.repositories.VenueRepository;
+import io.github.kxng0109.quicktix.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -39,6 +34,8 @@ public class EventService {
 	private final VenueRepository venueRepository;
 	private final SeatRepository seatRepository;
 	private final ApplicationEventPublisher applicationEventPublisher;
+	private final SectionRepository sectionRepository;
+	private final RowRepository rowRepository;
 
 	@Transactional
 	public EventResponse createEvent(CreateEventRequest request) {
@@ -53,31 +50,48 @@ public class EventService {
 		                   .venue(venue)
 		                   .eventStartDateTime(request.eventStartDateTime())
 		                   .eventEndDateTime(request.eventEndDateTime())
-		                   .ticketPrice(request.ticketPrice())
 		                   .status(EventStatus.UPCOMING)
 		                   .build();
 
+		Event savedEvent = eventRepository.save(event);
 
-		long numberOfSeats = request.numberOfSeats();
 		List<Seat> seats = new ArrayList<>();
 
-		for (int i = 1; i <= numberOfSeats; i++) {
-			Seat seat = Seat.builder()
-			                .event(event)
-			                .seatNumber(i)
-			                .rowName("A")
-			                .seatStatus(SeatStatus.AVAILABLE)
-			                .build();
-			seats.add(seat);
+		for (SectionRequest sectionRequest : request.sections()) {
+			Section section = Section.builder()
+			                         .name(sectionRequest.name())
+			                         .description(sectionRequest.description())
+			                         .capacity(sectionRequest.capacity())
+			                         .price(sectionRequest.basePrice())
+			                         .event(savedEvent)
+			                         .build();
+
+			Section savedSection = sectionRepository.save(section);
+
+			for(RowRequest rowRequest : sectionRequest.rows()){
+				Row row = Row.builder()
+						.name(rowRequest.name())
+						     .rowOrder(rowRequest.rowOrder())
+						     .section(savedSection)
+						     .build();
+
+				Row savedRow = rowRepository.save(row);
+
+				for (int i = 1; i <= rowRequest.numberOfSeats(); i++) {
+					Seat seat = Seat.builder()
+					                .event(savedEvent)
+					                .seatNumber(i)
+							.row(savedRow)
+					                .seatStatus(SeatStatus.AVAILABLE)
+							.price(sectionRequest.basePrice())
+					                .build();
+					seats.add(seat);
+				}
+			}
 		}
 
-		event.setSeats(seats);
-
-		// Because of CascadeType.ALL, saving the Event will:
-		// A. Insert the Event -> Get the ID (e.g., 501)
-		// B. Update all the Seats with event_id = 501
-		// C. Insert all the Seats
-		Event savedEvent = eventRepository.save(event);
+		seatRepository.saveAll(seats);
+		savedEvent.setSeats(seats);
 
 		return EventResponse
 				.builder()
@@ -85,9 +99,9 @@ public class EventService {
 				.name(savedEvent.getName())
 				.description(savedEvent.getDescription())
 				.venueName(savedEvent.getVenue().getName())
-				.ticketPrice(savedEvent.getTicketPrice())
+				.ticketPrice(savedEvent.getSeats().getFirst().getPrice())
 				.status(savedEvent.getStatus().getDisplayName())
-				.availableSeats(numberOfSeats)
+				.availableSeats(seatRepository.countByEventIdAndSeatStatus(savedEvent.getId(), SeatStatus.AVAILABLE))
 				.build();
 	}
 
@@ -134,7 +148,7 @@ public class EventService {
 
 	@Transactional
 	@CacheEvict(value = "events", allEntries = true)
-	public EventResponse updateEventById(Long id, CreateEventRequest request) {
+	public EventResponse updateEventById(Long id, UpdateEventRequest request) {
 		Event event = eventRepository.findById(id)
 		                             .orElseThrow(
 				                             () -> new EntityNotFoundException("Event not found")
@@ -142,23 +156,8 @@ public class EventService {
 
 		event.setName(request.name());
 		event.setDescription(request.description());
-		event.setTicketPrice(request.ticketPrice());
 		event.setEventStartDateTime(request.eventStartDateTime());
 		event.setEventEndDateTime(request.eventEndDateTime());
-
-		if (!event.getVenue().getId().equals(request.venueId())) {
-			Venue newVenue = venueRepository.findById(request.venueId())
-			                                .orElseThrow(
-					                                () -> new EntityNotFoundException("Venue not found")
-			                                );
-			event.setVenue(newVenue);
-		}
-
-		if (event.getSeats().size() != request.numberOfSeats()) {
-			throw new IllegalArgumentException(
-					"Cannot change seat capacity via update. Please contact support to resize an event."
-			);
-		}
 
 		Event savedEvent = eventRepository.save(event);
 
@@ -237,14 +236,16 @@ public class EventService {
 				.name(event.getName())
 				.description(event.getDescription())
 				.venueName(event.getVenue().getName())
-				.ticketPrice(event.getTicketPrice())
+				.ticketPrice(event.getSeats().getFirst().getPrice())
 				.status(event.getStatus().getDisplayName())
 				.availableSeats(numberOfAvailableSeats)
+				.eventStartDateTime(event.getEventStartDateTime())
+				.eventEndDateTime(event.getEventEndDateTime())
 				.build();
 	}
 
 	private Page<EventResponse> buildEventResponsePage(Page<Event> eventsPage) {
-		if(eventsPage == null) return null;
+		if (eventsPage == null) return null;
 
 		//Extract the ID from eventsPage
 		List<Long> eventIds = eventsPage.stream()

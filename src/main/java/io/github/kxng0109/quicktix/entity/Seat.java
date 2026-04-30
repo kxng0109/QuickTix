@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -26,11 +27,15 @@ public class Seat {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "row_id", nullable = false)
+    private Row row;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
+
     @Column(name = "seat_number")
     private Integer seatNumber;
-
-    @Column(name = "row_name")
-    private String rowName;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "seat_status", nullable = false)

@@ -9,7 +9,9 @@ import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
 import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
+import io.github.kxng0109.quicktix.exception.PaymentGatewayUnavailableException;
 import io.github.kxng0109.quicktix.service.gateway.dto.GatewayInitializationResponse;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -49,6 +51,7 @@ public class StripePaymentGateway implements PaymentGateway {
 	 * @throws PaymentFailedException if the Stripe API rejects the request.
 	 */
 	@Override
+	@CircuitBreaker(name = "stripeGateway", fallbackMethod = "paymentFallback")
 	public GatewayInitializationResponse initializePayment(Payment payment) {
 		try {
 			long amountInKobo = payment.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
@@ -83,6 +86,28 @@ public class StripePaymentGateway implements PaymentGateway {
 			log.error("Stripe initialization failed for Payment ID: {}", payment.getId(), e);
 			throw new PaymentFailedException("Failed to initialize payment with provider: " + e.getMessage());
 		}
+	}
+
+	/**
+	 * Handles fallback logic when payment initialization through Stripe fails.
+	 * <p>
+	 * This method logs the error and throws a custom exception indicating that the payment gateway is currently unavailable.
+	 * It serves as a safety net to ensure that any subsequent calls to the payment gateway are handled gracefully,
+	 * improving system resilience in the face of temporary outages or failures.
+	 *
+	 * @param payment The internal payment record for which the initialization failed.
+	 * @param t       The exception thrown during the payment initialization process, providing details on the failure reason.
+	 * @return Does not return anything. Throws a {@link PaymentGatewayUnavailableException} to indicate the fallback scenario.
+	 * @throws PaymentGatewayUnavailableException Always thrown with a message indicating that the payment provider is currently experiencing issues.
+	 */
+	public GatewayInitializationResponse paymentFallback(Payment payment, Throwable t) {
+		log.error("Stripe Circuit Breaker tripped or call failed for Payment ID: {}. Reason: {}",
+		          payment.getId(), t.getMessage()
+		);
+		throw new PaymentGatewayUnavailableException(
+				"The payment provider is currently experiencing issues. Please try again in a few minutes.",
+				t
+		);
 	}
 
 	/**

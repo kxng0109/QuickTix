@@ -375,6 +375,7 @@ public class BookingService {
 		                                                                   .rowName(seat.getRow().getName())
 		                                                                   .status(seat.getSeatStatus()
 		                                                                               .getDisplayName())
+		                                                                   .price(seat.getPrice())
 		                                                                   .build())
 		                                          .toList();
 

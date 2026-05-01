@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 @Builder
 @Schema(description = "Seat details response")
@@ -24,6 +25,8 @@ public record SeatResponse(
 		)
 		String status,
 
-		String sectionName
+		String sectionName,
+
+		BigDecimal price
 ) implements Serializable {
 }

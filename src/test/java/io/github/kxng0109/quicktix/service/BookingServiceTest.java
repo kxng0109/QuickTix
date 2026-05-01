@@ -638,6 +638,7 @@ public class BookingServiceTest {
 		                   .rowName(seat.getRow().getName())
 		                   .status(seat.getSeatStatus().getDisplayName())
 		                   .sectionName(seat.getRow().getSection().getName())
+		                   .price(seat.getPrice())
 		                   .build();
 	}
 }

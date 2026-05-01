@@ -3,7 +3,9 @@ package io.github.kxng0109.quicktix.service.gateway;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.kxng0109.quicktix.entity.Payment;
 import io.github.kxng0109.quicktix.exception.PaymentFailedException;
+import io.github.kxng0109.quicktix.exception.PaymentGatewayUnavailableException;
 import io.github.kxng0109.quicktix.service.gateway.dto.GatewayInitializationResponse;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -53,6 +55,7 @@ public class PaystackPaymentGateway implements PaymentGateway {
 	 * @throws PaymentFailedException if the HTTP request fails or Paystack returns an error.
 	 */
 	@Override
+	@CircuitBreaker(name = "paystackGateway", fallbackMethod = "paymentFallback")
 	public GatewayInitializationResponse initializePayment(Payment payment) {
 		try {
 			long amountInKobo = payment.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
@@ -89,6 +92,28 @@ public class PaystackPaymentGateway implements PaymentGateway {
 			log.error("Paystack initialization failed for Payment ID: {}", payment.getId(), e);
 			throw new PaymentFailedException("Failed to initialize payment with Paystack: " + e.getMessage());
 		}
+	}
+
+	/**
+	 * Fallback method for handling payment processing failures.
+	 * <p>
+	 * Logs an error message indicating that the Paystack Circuit Breaker tripped or the call failed,
+	 * along with the reason for the failure. Then, throws a {@link PaymentGatewayUnavailableException}
+	 * to indicate that the payment provider is currently unavailable.
+	 *
+	 * @param payment the internal payment record associated with the failed transaction.
+	 * @param t       the exception thrown during the payment processing attempt.
+	 * @return does not return anything; always throws an exception
+	 * @throws PaymentGatewayUnavailableException if called, indicating that the payment gateway is unavailable
+	 */
+	public GatewayInitializationResponse paymentFallback(Payment payment, Throwable t) {
+		log.error("Paystack Circuit Breaker tripped or call failed for Payment ID: {}. Reason: {}",
+		          payment.getId(), t.getMessage()
+		);
+		throw new PaymentGatewayUnavailableException(
+				"The payment provider is currently experiencing issues. Please try again in a few minutes.",
+				t
+		);
 	}
 
 	/**

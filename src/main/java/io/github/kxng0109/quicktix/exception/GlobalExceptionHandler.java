@@ -174,8 +174,17 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleJwtExpiredException(
 			JwtExpiredException ex,
 			HttpServletRequest request
-	){
+	) {
 		HttpStatus status = HttpStatus.UNAUTHORIZED;
+		return buildErrorResponse(ex, request, status);
+	}
+
+	@ExceptionHandler(PaymentGatewayUnavailableException.class)
+	public ResponseEntity<ErrorResponse> handlePaymentGatewayUnavailableException(
+			PaymentGatewayUnavailableException ex,
+			HttpServletRequest request
+	) {
+		HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
 		return buildErrorResponse(ex, request, status);
 	}
 

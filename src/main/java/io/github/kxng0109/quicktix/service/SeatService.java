@@ -269,9 +269,9 @@ public class SeatService {
 
 		for (Seat seat : expiredSeats) {
 			String heldByEmail = seat.getHeldByUser().getEmail();
-			if(heldByEmail == null){
+			if (heldByEmail == null) {
 				log.warn("Seat with ID {} has a null email field. Can not release Redis lock!", seat.getId());
-			}else{
+			} else {
 				seatLockService.releaseLock(seat.getId(), heldByEmail);
 			}
 
@@ -335,7 +335,8 @@ public class SeatService {
 		                   .id(seat.getId())
 		                   .seatNumber(seat.getSeatNumber())
 		                   .rowName(seat.getRow().getName())
-				.sectionName(seat.getRow().getSection().getName())
+		                   .sectionName(seat.getRow().getSection().getName())
+		                   .price(seat.getPrice())
 		                   .status(seat.getSeatStatus().getDisplayName())
 		                   .build();
 	}
